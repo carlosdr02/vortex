@@ -31,8 +31,10 @@ public:
     VkPhysicalDevice physical;
     VkPhysicalDeviceMemoryProperties2 memoryProperties;
     uint32_t queueFamilyIndex;
+    VkDevice logical;
 
     Device(VkInstance instance, const Window& window);
+    void destroy();
 };
 
 #endif // !GRAPHICS_H

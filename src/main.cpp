@@ -20,6 +20,7 @@ int main() {
         glfwPollEvents();
     }
 
+    device.destroy();
     window.destroy();
 
 #ifdef _DEBUG

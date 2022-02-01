@@ -206,4 +206,39 @@ Device::Device(VkInstance instance, const Window& window) {
     }
 
     delete[] queueFamilyProperties;
+
+    // Create the device.
+    float queuePriorities[] = {
+        1.0f, 1.0f
+    };
+
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = queueFamilyIndex,
+        .queueCount       = COUNT_OF(queuePriorities),
+        .pQueuePriorities = queuePriorities
+    };
+
+    const char* swapchainExtension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+
+    VkDeviceCreateInfo deviceCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .queueCreateInfoCount    = 1,
+        .pQueueCreateInfos       = &queueCreateInfo,
+        .enabledLayerCount       = 0,
+        .ppEnabledLayerNames     = nullptr,
+        .enabledExtensionCount   = 1,
+        .ppEnabledExtensionNames = &swapchainExtension,
+        .pEnabledFeatures        = nullptr
+    };
+
+    vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
+}
+
+void Device::destroy() {
+    vkDestroyDevice(logical, nullptr);
 }
