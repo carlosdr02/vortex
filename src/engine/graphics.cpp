@@ -148,7 +148,7 @@ static uint32_t getMaxSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
     return index;
 }
 
-Device::Device(VkInstance instance) {
+Device::Device(VkInstance instance, const Window& window) {
     memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
 
     // Select a physical device.
@@ -181,4 +181,29 @@ Device::Device(VkInstance instance) {
 
     delete[] physicalDevices;
     delete[] deviceLocalHeapSizes;
+
+    // Select a queue family.
+    uint32_t queueFamilyPropertyCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
+
+    VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
+
+    for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
+        uint32_t queueCount = queueFamilyProperties[i].queueCount;
+
+        if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 || queueCount < 2) {
+            continue;
+        }
+
+        VkBool32 surfaceSupported;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, window.surface, &surfaceSupported);
+
+        if (surfaceSupported) {
+            queueFamilyIndex = i;
+            break;
+        }
+    }
+
+    delete[] queueFamilyProperties;
 }

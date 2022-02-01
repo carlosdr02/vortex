@@ -30,8 +30,9 @@ class Device {
 public:
     VkPhysicalDevice physical;
     VkPhysicalDeviceMemoryProperties2 memoryProperties;
+    uint32_t queueFamilyIndex;
 
-    Device(VkInstance instance);
+    Device(VkInstance instance, const Window& window);
 };
 
 #endif // !GRAPHICS_H

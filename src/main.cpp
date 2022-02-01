@@ -14,7 +14,7 @@ int main() {
 
     Window window(instance, 1600, 900, applicationName);
 
-    Device device(instance);
+    Device device(instance, window);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
