@@ -26,4 +26,12 @@ private:
     GLFWwindow* window;
 };
 
+class Device {
+public:
+    VkPhysicalDevice physical;
+    VkPhysicalDeviceMemoryProperties2 memoryProperties;
+
+    Device(VkInstance instance);
+};
+
 #endif // !GRAPHICS_H

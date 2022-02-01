@@ -121,3 +121,64 @@ void Window::destroy() {
 Window::operator GLFWwindow*() {
     return window;
 }
+
+static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProperties2& memoryProperties) {
+    VkDeviceSize maxDeviceLocalHeapSize = 0;
+
+    for (const VkMemoryHeap& heap : memoryProperties.memoryProperties.memoryHeaps) {
+        if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && heap.size > maxDeviceLocalHeapSize) {
+            maxDeviceLocalHeapSize = heap.size;
+        }
+    }
+
+    return maxDeviceLocalHeapSize;
+}
+
+static uint32_t getMaxSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
+    VkDeviceSize max = 0;
+    uint32_t index = 0;
+
+    for (uint32_t i = 0; i < sizeCount; ++i) {
+        if (sizes[i] > max) {
+            max = sizes[i];
+            index = i;
+        }
+    }
+
+    return index;
+}
+
+Device::Device(VkInstance instance) {
+    memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
+
+    // Select a physical device.
+    uint32_t physicalDeviceCount;
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+
+    VkPhysicalDevice* physicalDevices = new VkPhysicalDevice[physicalDeviceCount];
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices);
+
+    VkDeviceSize* deviceLocalHeapSizes = new VkDeviceSize[physicalDeviceCount]();
+
+    for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
+        VkPhysicalDeviceProperties2 properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        vkGetPhysicalDeviceProperties2(physicalDevices[i], &properties);
+
+        if (properties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            continue;
+        }
+
+        VkPhysicalDeviceMemoryProperties2 memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
+        vkGetPhysicalDeviceMemoryProperties2(physicalDevices[i], &memoryProperties);
+
+        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(memoryProperties);
+    }
+
+    uint32_t index = getMaxSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
+    physical = physicalDevices[index];
+
+    vkGetPhysicalDeviceMemoryProperties2(physical, &memoryProperties);
+
+    delete[] physicalDevices;
+    delete[] deviceLocalHeapSizes;
+}
