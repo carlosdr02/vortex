@@ -33,10 +33,10 @@ public:
     uint32_t queueFamilyIndex;
     VkDevice logical;
 
-    Device(VkInstance instance, const Window& window);
+    Device(VkInstance instance, Window& window);
     void destroy();
 
-    VkSurfaceFormatKHR getSurfaceFormat(const Window& window) const;
+    VkSurfaceFormatKHR getSurfaceFormat(Window& window);
 };
 
 VkRenderPass createRenderPass(Device& device, VkFormat format);

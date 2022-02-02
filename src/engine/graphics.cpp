@@ -136,7 +136,7 @@ static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProper
     return maxDeviceLocalHeapSize;
 }
 
-Device::Device(VkInstance instance, const Window& window) {
+Device::Device(VkInstance instance, Window& window) {
     memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
 
     // Select a physical device.
@@ -231,7 +231,7 @@ void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
 }
 
-VkSurfaceFormatKHR Device::getSurfaceFormat(const Window& window) const {
+VkSurfaceFormatKHR Device::getSurfaceFormat(Window& window) {
     VkFormat prefferedFormats[] = {
         VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_B8G8R8A8_SRGB,
