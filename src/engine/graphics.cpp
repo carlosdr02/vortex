@@ -1,5 +1,7 @@
 #include "graphics.h"
 
+#include <algorithm>
+
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -134,20 +136,6 @@ static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProper
     return maxDeviceLocalHeapSize;
 }
 
-static uint32_t getMaxSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
-    VkDeviceSize max = 0;
-    uint32_t index = 0;
-
-    for (uint32_t i = 0; i < sizeCount; ++i) {
-        if (sizes[i] > max) {
-            max = sizes[i];
-            index = i;
-        }
-    }
-
-    return index;
-}
-
 Device::Device(VkInstance instance, const Window& window) {
     memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
 
@@ -174,7 +162,7 @@ Device::Device(VkInstance instance, const Window& window) {
         deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(memoryProperties);
     }
 
-    uint32_t index = getMaxSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
+    uint32_t index = std::max_element(deviceLocalHeapSizes, deviceLocalHeapSizes + physicalDeviceCount) - deviceLocalHeapSizes;
     physical = physicalDevices[index];
 
     vkGetPhysicalDeviceMemoryProperties2(physical, &memoryProperties);
