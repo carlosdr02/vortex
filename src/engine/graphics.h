@@ -35,6 +35,8 @@ public:
 
     Device(VkInstance instance, const Window& window);
     void destroy();
+
+    VkSurfaceFormatKHR getSurfaceFormat(const Window& window) const;
 };
 
 #endif // !GRAPHICS_H

@@ -230,3 +230,34 @@ Device::Device(VkInstance instance, const Window& window) {
 void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
 }
+
+VkSurfaceFormatKHR Device::getSurfaceFormat(const Window& window) const {
+    VkFormat prefferedFormats[] = {
+        VK_FORMAT_R8G8B8A8_SRGB,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_UNORM
+    };
+
+    uint32_t surfaceFormatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, window.surface, &surfaceFormatCount, nullptr);
+
+    VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, window.surface, &surfaceFormatCount, surfaceFormats);
+
+    VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+
+    for (VkFormat prefferedFormat : prefferedFormats) {
+        for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
+            if (surfaceFormats[i].format == prefferedFormat) {
+                surfaceFormat = surfaceFormats[i];
+                goto exit;
+            }
+        }
+    }
+
+exit:
+    delete[] surfaceFormats;
+
+    return surfaceFormat;
+}
