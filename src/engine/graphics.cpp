@@ -149,17 +149,17 @@ Device::Device(VkInstance instance, Window& window) {
     VkDeviceSize* deviceLocalHeapSizes = new VkDeviceSize[physicalDeviceCount]();
 
     for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
-        VkPhysicalDeviceProperties2 properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-        vkGetPhysicalDeviceProperties2(physicalDevices[i], &properties);
+        VkPhysicalDeviceProperties2 physicalDeviceProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+        vkGetPhysicalDeviceProperties2(physicalDevices[i], &physicalDeviceProperties);
 
-        if (properties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        if (physicalDeviceProperties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
             continue;
         }
 
-        VkPhysicalDeviceMemoryProperties2 memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-        vkGetPhysicalDeviceMemoryProperties2(physicalDevices[i], &memoryProperties);
+        VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
+        vkGetPhysicalDeviceMemoryProperties2(physicalDevices[i], &physicalDeviceMemoryProperties);
 
-        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(memoryProperties);
+        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(physicalDeviceMemoryProperties);
     }
 
     uint32_t index = std::max_element(deviceLocalHeapSizes, deviceLocalHeapSizes + physicalDeviceCount) - deviceLocalHeapSizes;
