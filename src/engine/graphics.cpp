@@ -262,6 +262,27 @@ exit:
     return surfaceFormat;
 }
 
+VkPresentModeKHR Device::getSurfacePresentMode(Window& window) {
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, window.surface, &presentModeCount, nullptr);
+
+    VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, window.surface, &presentModeCount, presentModes);
+
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+    for (uint32_t i = 0; i < presentModeCount; ++i) {
+        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            break;
+        }
+    }
+
+    delete[] presentModes;
+
+    return presentMode;
+}
+
 VkRenderPass createRenderPass(Device& device, VkFormat format) {
     VkAttachmentDescription2 colorAttachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,

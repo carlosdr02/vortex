@@ -37,6 +37,7 @@ public:
     void destroy();
 
     VkSurfaceFormatKHR getSurfaceFormat(Window& window);
+    VkPresentModeKHR getSurfacePresentMode(Window& window);
 };
 
 VkRenderPass createRenderPass(Device& device, VkFormat format);
