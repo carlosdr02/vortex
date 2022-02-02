@@ -261,3 +261,75 @@ exit:
 
     return surfaceFormat;
 }
+
+VkRenderPass createRenderPass(Device& device, VkFormat format) {
+    VkAttachmentDescription2 colorAttachmentDescription = {
+        .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+        .pNext          = nullptr,
+        .flags          = 0,
+        .format         = format,
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    };
+
+    VkAttachmentReference2 colorAttachmentReference = {
+        .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+        .pNext      = nullptr,
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .aspectMask = 0
+    };
+
+    VkSubpassDescription2 subpassDescription = {
+        .sType                   = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .viewMask                = 0,
+        .inputAttachmentCount    = 0,
+        .pInputAttachments       = nullptr,
+        .colorAttachmentCount    = 1,
+        .pColorAttachments       = &colorAttachmentReference,
+        .pResolveAttachments     = nullptr,
+        .pDepthStencilAttachment = nullptr,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments    = nullptr
+    };
+
+    VkSubpassDependency2 subpassDependency = {
+        .sType           = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+        .pNext           = nullptr,
+        .srcSubpass      = VK_SUBPASS_EXTERNAL,
+        .dstSubpass      = 0,
+        .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask   = 0,
+        .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+        .viewOffset      = 0
+    };
+
+    VkRenderPassCreateInfo2 renderPassCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .attachmentCount         = 1,
+        .pAttachments            = &colorAttachmentDescription,
+        .subpassCount            = 1,
+        .pSubpasses              = &subpassDescription,
+        .dependencyCount         = 1,
+        .pDependencies           = &subpassDependency,
+        .correlatedViewMaskCount = 0,
+        .pCorrelatedViewMasks    = nullptr
+    };
+
+    VkRenderPass renderPass;
+    vkCreateRenderPass2(device.logical, &renderPassCreateInfo, nullptr, &renderPass);
+
+    return renderPass;
+}

@@ -39,4 +39,6 @@ public:
     VkSurfaceFormatKHR getSurfaceFormat(const Window& window) const;
 };
 
+VkRenderPass createRenderPass(Device& device, VkFormat format);
+
 #endif // !GRAPHICS_H

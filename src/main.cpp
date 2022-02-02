@@ -16,9 +16,15 @@ int main() {
 
     Device device(instance, window);
 
+    VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window);
+
+    VkRenderPass renderPass = createRenderPass(device, surfaceFormat.format);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
+
+    vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
     device.destroy();
     window.destroy();
