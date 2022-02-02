@@ -17,8 +17,9 @@ int main() {
     Device device(instance, window);
 
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window);
+    VkFormat depthFormat = device.getDepthFormat();
 
-    VkRenderPass renderPass = createRenderPass(device, surfaceFormat.format);
+    VkRenderPass renderPass = createRenderPass(device, surfaceFormat.format, depthFormat);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

@@ -41,6 +41,6 @@ public:
     VkFormat getDepthFormat();
 };
 
-VkRenderPass createRenderPass(Device& device, VkFormat format);
+VkRenderPass createRenderPass(Device& device, VkFormat colorFormat, VkFormat depthFormat);
 
 #endif // !GRAPHICS_H
