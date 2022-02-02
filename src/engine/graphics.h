@@ -38,6 +38,7 @@ public:
 
     VkSurfaceFormatKHR getSurfaceFormat(Window& window);
     VkPresentModeKHR getSurfacePresentMode(Window& window);
+    VkFormat getDepthFormat();
 };
 
 VkRenderPass createRenderPass(Device& device, VkFormat format);

@@ -283,6 +283,25 @@ VkPresentModeKHR Device::getSurfacePresentMode(Window& window) {
     return presentMode;
 }
 
+VkFormat Device::getDepthFormat() {
+    VkFormat prefferedDepthFormats[] = {
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D16_UNORM_S8_UINT
+    };
+
+    for (VkFormat prefferedDepthFormat : prefferedDepthFormats) {
+        VkFormatProperties2 formatProperties = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
+        vkGetPhysicalDeviceFormatProperties2(physical, prefferedDepthFormat, &formatProperties);
+
+        if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return prefferedDepthFormat;
+        }
+    }
+
+    return VK_FORMAT_UNDEFINED;
+}
+
 VkRenderPass createRenderPass(Device& device, VkFormat format) {
     VkAttachmentDescription2 colorAttachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
