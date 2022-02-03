@@ -42,4 +42,20 @@ public:
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
 
+struct RendererCreateInfo {
+    VkSurfaceKHR surface;
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+};
+
+class Renderer {
+public:
+    Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
+    void destroy(VkDevice device);
+
+private:
+    VkSwapchainKHR swapchain;
+};
+
 #endif // !GRAPHICS_H

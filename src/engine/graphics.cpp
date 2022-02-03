@@ -425,3 +425,37 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
 
     return renderPass;
 }
+
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) {
+    // Create the swapchain.
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .surface               = createInfo.surface,
+        .minImageCount         = surfaceCapabilities->minImageCount,
+        .imageFormat           = surfaceFormat.format,
+        .imageColorSpace       = surfaceFormat.colorSpace,
+        .imageExtent           = surfaceCapabilities->currentExtent,
+        .imageArrayLayers      = 1,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr,
+        .preTransform          = surfaceCapabilities->currentTransform,
+        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode           = createInfo.presentMode,
+        .clipped               = VK_TRUE
+    };
+
+    swapchainCreateInfo.oldSwapchain = oldRenderer ? oldRenderer->swapchain : VK_NULL_HANDLE;
+
+    vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
+}
+
+void Renderer::destroy(VkDevice device) {
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
+}

@@ -16,14 +16,27 @@ int main() {
 
     Device device(instance, window.surface);
 
+    VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(window);
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window.surface);
+    VkPresentModeKHR presentMode = device.getSurfacePresentMode(window.surface);
     VkFormat depthFormat = device.getDepthStencilFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
+    RendererCreateInfo rendererCreateInfo = {
+        .surface             = window.surface,
+        .surfaceCapabilities = &surfaceCapabilities,
+        .surfaceFormat       = surfaceFormat,
+        .presentMode         = presentMode
+    };
+
+    Renderer renderer(device, rendererCreateInfo, nullptr);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
+
+    renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
