@@ -138,7 +138,7 @@ static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProper
     return maxDeviceLocalHeapSize;
 }
 
-Device::Device(VkInstance instance, Window& window) {
+Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
 
     // Select a physical device.
@@ -187,7 +187,7 @@ Device::Device(VkInstance instance, Window& window) {
         }
 
         VkBool32 surfaceSupported;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, window.surface, &surfaceSupported);
+        vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
         if (surfaceSupported) {
             queueFamilyIndex = i;
@@ -260,7 +260,7 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
     return surfaceCapabilities;
 }
 
-VkSurfaceFormatKHR Device::getSurfaceFormat(Window& window) {
+VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
     VkFormat prefferedFormats[] = {
         VK_FORMAT_R8G8B8A8_SRGB,
         VK_FORMAT_B8G8R8A8_SRGB,
@@ -269,10 +269,10 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(Window& window) {
     };
 
     uint32_t surfaceFormatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, window.surface, &surfaceFormatCount, nullptr);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, nullptr);
 
     VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, window.surface, &surfaceFormatCount, surfaceFormats);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
@@ -291,12 +291,12 @@ exit:
     return surfaceFormat;
 }
 
-VkPresentModeKHR Device::getSurfacePresentMode(Window& window) {
+VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
     uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, window.surface, &presentModeCount, nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &presentModeCount, nullptr);
 
     VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, window.surface, &presentModeCount, presentModes);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &presentModeCount, presentModes);
 
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
@@ -331,7 +331,7 @@ VkFormat Device::getDepthFormat() {
     return VK_FORMAT_UNDEFINED;
 }
 
-VkRenderPass createRenderPass(Device& device, VkFormat colorFormat, VkFormat depthFormat) {
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat) {
     VkAttachmentDescription2 colorAttachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
@@ -425,7 +425,7 @@ VkRenderPass createRenderPass(Device& device, VkFormat colorFormat, VkFormat dep
     };
 
     VkRenderPass renderPass;
-    vkCreateRenderPass2(device.logical, &renderPassCreateInfo, nullptr, &renderPass);
+    vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
 
     return renderPass;
 }

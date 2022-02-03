@@ -33,15 +33,15 @@ public:
     uint32_t queueFamilyIndex;
     VkDevice logical;
 
-    Device(VkInstance instance, Window& window);
+    Device(VkInstance instance, VkSurfaceKHR surface);
     void destroy();
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
-    VkSurfaceFormatKHR getSurfaceFormat(Window& window);
-    VkPresentModeKHR getSurfacePresentMode(Window& window);
+    VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
+    VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthFormat();
 };
 
-VkRenderPass createRenderPass(Device& device, VkFormat colorFormat, VkFormat depthFormat);
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
 
 #endif // !GRAPHICS_H
