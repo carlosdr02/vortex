@@ -29,7 +29,6 @@ private:
 class Device {
 public:
     VkPhysicalDevice physical;
-    VkPhysicalDeviceMemoryProperties2 memoryProperties;
     uint32_t queueFamilyIndex;
     VkDevice logical;
 

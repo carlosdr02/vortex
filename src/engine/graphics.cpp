@@ -139,8 +139,6 @@ static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProper
 }
 
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
-    memoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-
     // Select a physical device.
     uint32_t physicalDeviceCount;
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -166,8 +164,6 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     uint32_t index = std::max_element(deviceLocalHeapSizes, deviceLocalHeapSizes + physicalDeviceCount) - deviceLocalHeapSizes;
     physical = physicalDevices[index];
-
-    vkGetPhysicalDeviceMemoryProperties2(physical, &memoryProperties);
 
     delete[] physicalDevices;
     delete[] deviceLocalHeapSizes;
