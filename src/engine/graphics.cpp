@@ -114,7 +114,7 @@ Window::Window(VkInstance instance, int width, int height, const char* title) : 
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
 }
 
-void Window::destroy() {
+Window::~Window() {
     // Destroy the surface.
     vkDestroySurfaceKHR(instance, surface, nullptr);
 
@@ -229,7 +229,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
 }
 
-void Device::destroy() {
+Device::~Device() {
     vkDestroyDevice(logical, nullptr);
 }
 

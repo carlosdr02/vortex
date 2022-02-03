@@ -27,8 +27,8 @@ int main() {
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
-    device.destroy();
-    window.destroy();
+    device.~Device();
+    window.~Window();
 
 #ifdef _DEBUG
     destroyDebugMessenger(instance, debugMessenger);

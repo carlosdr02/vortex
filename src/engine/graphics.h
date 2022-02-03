@@ -17,7 +17,7 @@ public:
     VkSurfaceKHR surface;
 
     Window(VkInstance instance, int width, int height, const char* title);
-    void destroy();
+    ~Window();
 
     operator GLFWwindow*();
 
@@ -34,7 +34,7 @@ public:
     VkDevice logical;
 
     Device(VkInstance instance, VkSurfaceKHR surface);
-    void destroy();
+    ~Device();
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
