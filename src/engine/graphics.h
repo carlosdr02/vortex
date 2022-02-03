@@ -36,6 +36,7 @@ public:
     Device(VkInstance instance, Window& window);
     void destroy();
 
+    VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
     VkSurfaceFormatKHR getSurfaceFormat(Window& window);
     VkPresentModeKHR getSurfacePresentMode(Window& window);
     VkFormat getDepthFormat();

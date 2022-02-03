@@ -1,5 +1,7 @@
 #include "graphics.h"
 
+#include <stdint.h>
+
 #include <algorithm>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
@@ -229,6 +231,33 @@ Device::Device(VkInstance instance, Window& window) {
 
 void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
+}
+
+VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, window.surface, &surfaceCapabilities);
+
+    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
+    uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
+
+    if (minImageCount < 3 && (maxImageCount > minImageCount || maxImageCount == 0)) {
+        ++minImageCount;
+    }
+
+    VkExtent2D& extent = surfaceCapabilities.currentExtent;
+
+    if (extent.width == UINT32_MAX) {
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+
+        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
+        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
+
+        extent.width = std::clamp((uint32_t)width, minExtent.width, maxExtent.width);
+        extent.height = std::clamp((uint32_t)height, minExtent.height, maxExtent.height);
+    }
+
+    return surfaceCapabilities;
 }
 
 VkSurfaceFormatKHR Device::getSurfaceFormat(Window& window) {
