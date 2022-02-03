@@ -38,7 +38,7 @@ public:
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
-    VkFormat getDepthFormat();
+    VkFormat getDepthStencilFormat();
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);

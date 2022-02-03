@@ -17,7 +17,7 @@ int main() {
     Device device(instance, window.surface);
 
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window.surface);
-    VkFormat depthFormat = device.getDepthFormat();
+    VkFormat depthFormat = device.getDepthStencilFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 

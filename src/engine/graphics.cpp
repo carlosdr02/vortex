@@ -308,19 +308,19 @@ VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
     return presentMode;
 }
 
-VkFormat Device::getDepthFormat() {
-    VkFormat prefferedDepthFormats[] = {
+VkFormat Device::getDepthStencilFormat() {
+    VkFormat prefferedDepthStencilFormats[] = {
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_D16_UNORM_S8_UINT
     };
 
-    for (VkFormat prefferedDepthFormat : prefferedDepthFormats) {
+    for (VkFormat prefferedDepthStencilFormat : prefferedDepthStencilFormats) {
         VkFormatProperties2 formatProperties = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        vkGetPhysicalDeviceFormatProperties2(physical, prefferedDepthFormat, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties2(physical, prefferedDepthStencilFormat, &formatProperties);
 
         if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return prefferedDepthFormat;
+            return prefferedDepthStencilFormat;
         }
     }
 
