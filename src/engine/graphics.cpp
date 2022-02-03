@@ -106,7 +106,7 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 }
 #endif // _DEBUG
 
-Window::Window(VkInstance instance, int width, int height, const char* title) : instance(instance) {
+Window::Window(VkInstance instance, int width, int height, const char* title) {
     // Create the window.
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
@@ -114,7 +114,7 @@ Window::Window(VkInstance instance, int width, int height, const char* title) : 
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
 }
 
-void Window::destroy() {
+void Window::destroy(VkInstance instance) {
     // Destroy the surface.
     vkDestroySurfaceKHR(instance, surface, nullptr);
 

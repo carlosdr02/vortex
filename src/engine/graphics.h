@@ -17,12 +17,11 @@ public:
     VkSurfaceKHR surface;
 
     Window(VkInstance instance, int width, int height, const char* title);
-    void destroy();
+    void destroy(VkInstance instance);
 
     operator GLFWwindow*();
 
 private:
-    VkInstance instance;
     GLFWwindow* window;
 };
 
