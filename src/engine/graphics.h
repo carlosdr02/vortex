@@ -56,6 +56,8 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    uint32_t swapchainImageCount;
+    VkImage* swapchainImages;
 };
 
 #endif // !GRAPHICS_H

@@ -454,8 +454,16 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     swapchainCreateInfo.oldSwapchain = oldRenderer ? oldRenderer->swapchain : VK_NULL_HANDLE;
 
     vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
+
+    // Get the swapchain images.
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
+
+    swapchainImages = new VkImage[swapchainImageCount];
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 }
 
 void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
+
+    free(swapchainImages);
 }
