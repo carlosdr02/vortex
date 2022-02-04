@@ -455,15 +455,48 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 
     vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
 
-    // Get the swapchain images.
+    // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
+    // Allocate host memory.
     swapchainImages = new VkImage[swapchainImageCount];
+    swapchainImageViews = new VkImageView[swapchainImageCount];
+
+    // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        // Create the swapchain image views.
+        VkImageSubresourceRange subresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
+
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = swapchainImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = surfaceFormat.format,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = subresourceRange
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+    }
 }
 
 void Renderer::destroy(VkDevice device) {
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+    }
+
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    free(swapchainImageViews);
     free(swapchainImages);
 }
