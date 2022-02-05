@@ -69,6 +69,8 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkCommandPool commandPool;
+    VkCommandBuffer* commandBuffers;
 };
 
 #endif // !GRAPHICS_H

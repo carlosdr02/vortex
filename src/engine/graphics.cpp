@@ -507,6 +507,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     swapchainImageViews = new VkImageView[swapchainImageCount];
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
+    commandBuffers = new VkCommandBuffer[swapchainImageCount];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -617,9 +618,31 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
+
+    // Create the command pool.
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = device.queueFamilyIndex
+    };
+
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    // Allocate the command buffers.
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = swapchainImageCount
+    };
+
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 }
 
 void Renderer::destroy(VkDevice device) {
+    vkDestroyCommandPool(device, commandPool, nullptr);
     vkFreeMemory(device, depthImagesMemory, nullptr);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -631,6 +654,7 @@ void Renderer::destroy(VkDevice device) {
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] commandBuffers;
     delete[] framebuffers;
     delete[] depthImageViews;
     delete[] swapchainImageViews;
