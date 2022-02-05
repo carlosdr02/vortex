@@ -64,8 +64,9 @@ private:
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImage* depthImages;
-    VkImageView* swapchainImageViews;
     VkDeviceMemory depthImagesMemory;
+    VkImageView* swapchainImageViews;
+    VkImageView* depthImageViews;
 };
 
 #endif // !GRAPHICS_H

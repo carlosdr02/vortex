@@ -505,12 +505,13 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     swapchainImages = new VkImage[swapchainImageCount];
     depthImages = new VkImage[swapchainImageCount];
     swapchainImageViews = new VkImageView[swapchainImageCount];
+    depthImageViews = new VkImageView[swapchainImageCount];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
+    // Create the depth images.
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        // Create the depth images.
         VkImageCreateInfo depthImageCreateInfo = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext                 = nullptr,
@@ -530,28 +531,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
         };
 
         vkCreateImage(device.logical, &depthImageCreateInfo, nullptr, &depthImages[i]);
-
-        // Create the swapchain image views.
-        VkImageSubresourceRange subresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
-
-        VkImageViewCreateInfo imageViewCreateInfo = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .image            = swapchainImages[i],
-            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = surfaceFormat.format,
-            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = subresourceRange
-        };
-
-        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
     }
 
     // Allocate device memory.
@@ -577,18 +556,60 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     vkBindImageMemory2(device.logical, swapchainImageCount, bindDepthImageMemoryInfos);
 
     delete[] bindDepthImageMemoryInfos;
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageSubresourceRange subresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
+
+        // Create the swapchain image views.
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = swapchainImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = surfaceFormat.format,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = subresourceRange
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+
+        // Create the depth image views.
+        subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        VkImageViewCreateInfo depthImageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = depthImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = createInfo.depthFormat,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = subresourceRange
+        };
+
+        vkCreateImageView(device.logical, &depthImageViewCreateInfo, nullptr, &depthImageViews[i]);
+    }
 }
 
 void Renderer::destroy(VkDevice device) {
     vkFreeMemory(device, depthImagesMemory, nullptr);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImageView(device, depthImageViews[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
         vkDestroyImage(device, depthImages[i], nullptr);
     }
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] depthImageViews;
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
