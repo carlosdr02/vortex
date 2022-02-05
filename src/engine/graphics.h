@@ -47,6 +47,7 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
+    VkFormat depthFormat;
 };
 
 class Renderer {
@@ -58,6 +59,7 @@ private:
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+    VkImage* depthImages;
     VkImageView* swapchainImageViews;
 };
 

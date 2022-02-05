@@ -430,6 +430,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+    VkExtent2D extent = surfaceCapabilities->currentExtent;
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo = {
         .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -439,7 +440,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
         .minImageCount         = surfaceCapabilities->minImageCount,
         .imageFormat           = surfaceFormat.format,
         .imageColorSpace       = surfaceFormat.colorSpace,
-        .imageExtent           = surfaceCapabilities->currentExtent,
+        .imageExtent           = extent,
         .imageArrayLayers      = 1,
         .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -460,12 +461,34 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 
     // Allocate host memory.
     swapchainImages = new VkImage[swapchainImageCount];
+    depthImages = new VkImage[swapchainImageCount];
     swapchainImageViews = new VkImageView[swapchainImageCount];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        // Create the depth images.
+        VkImageCreateInfo depthImageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = createInfo.depthFormat,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+
+        vkCreateImage(device.logical, &depthImageCreateInfo, nullptr, &depthImages[i]);
+
         // Create the swapchain image views.
         VkImageSubresourceRange subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -493,10 +516,12 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 void Renderer::destroy(VkDevice device) {
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+        vkDestroyImage(device, depthImages[i], nullptr);
     }
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
     free(swapchainImageViews);
+    free(depthImages);
     free(swapchainImages);
 }
