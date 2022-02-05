@@ -28,7 +28,8 @@ int main() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .presentMode         = presentMode,
-        .depthFormat         = depthFormat
+        .depthFormat         = depthFormat,
+        .renderPass          = renderPass
     };
 
     Renderer renderer(device, rendererCreateInfo, nullptr);

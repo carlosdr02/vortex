@@ -52,6 +52,7 @@ struct RendererCreateInfo {
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
+    VkRenderPass renderPass;
 };
 
 class Renderer {
@@ -67,6 +68,7 @@ private:
     VkDeviceMemory depthImagesMemory;
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
+    VkFramebuffer* framebuffers;
 };
 
 #endif // !GRAPHICS_H

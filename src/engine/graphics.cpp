@@ -506,6 +506,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     depthImages = new VkImage[swapchainImageCount];
     swapchainImageViews = new VkImageView[swapchainImageCount];
     depthImageViews = new VkImageView[swapchainImageCount];
+    framebuffers = new VkFramebuffer[swapchainImageCount];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -558,6 +559,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     delete[] bindDepthImageMemoryInfos;
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        // Create the swapchain image views.
         VkImageSubresourceRange subresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel   = 0,
@@ -566,7 +568,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
             .layerCount     = 1
         };
 
-        // Create the swapchain image views.
         VkImageViewCreateInfo imageViewCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext            = nullptr,
@@ -595,6 +596,26 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
         };
 
         vkCreateImageView(device.logical, &depthImageViewCreateInfo, nullptr, &depthImageViews[i]);
+
+        // Create the framebuffers.
+        VkImageView attachments[] = {
+            swapchainImageViews[i],
+            depthImageViews[i]
+        };
+
+        VkFramebufferCreateInfo framebufferCreateInfo = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext           = nullptr,
+            .flags           = 0,
+            .renderPass      = createInfo.renderPass,
+            .attachmentCount = COUNT_OF(attachments),
+            .pAttachments    = attachments,
+            .width           = extent.width,
+            .height          = extent.height,
+            .layers          = 1
+        };
+
+        vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 }
 
@@ -602,6 +623,7 @@ void Renderer::destroy(VkDevice device) {
     vkFreeMemory(device, depthImagesMemory, nullptr);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, depthImageViews[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
         vkDestroyImage(device, depthImages[i], nullptr);
@@ -609,6 +631,7 @@ void Renderer::destroy(VkDevice device) {
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] framebuffers;
     delete[] depthImageViews;
     delete[] swapchainImageViews;
     delete[] depthImages;
