@@ -439,7 +439,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) : framesInFlight(createInfo.framesInFlight) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -654,6 +654,10 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         imageFences[i] = frameFences[i % framesInFlight];
     }
+
+    // Get the device queues.
+    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
+    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 }
 
 void Renderer::destroy(VkDevice device) {
@@ -687,4 +691,95 @@ void Renderer::destroy(VkDevice device) {
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
+}
+
+void Renderer::recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent) {
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo);
+
+        VkRect2D renderArea = {
+            .offset = { 0, 0 },
+            .extent = extent
+        };
+
+        VkClearValue clearValues[] = {
+            { 0.0f, 0.0f, 0.0f, 1.0f },
+            { 1.0f, 0 },
+        };
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {
+            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext           = nullptr,
+            .renderPass      = renderPass,
+            .framebuffer     = framebuffers[i],
+            .renderArea      = renderArea,
+            .clearValueCount = COUNT_OF(clearValues),
+            .pClearValues    = clearValues
+        };
+
+        VkSubpassBeginInfo subpassBeginInfo = {
+            .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+            .pNext    = nullptr,
+            .contents = VK_SUBPASS_CONTENTS_INLINE
+        };
+
+        vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
+
+        VkSubpassEndInfo subpassEndInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+            .pNext = nullptr
+        };
+
+        vkCmdEndRenderPass2(commandBuffers[i], &subpassEndInfo);
+
+        vkEndCommandBuffer(commandBuffers[i]);
+    }
+}
+
+void Renderer::draw(VkDevice device) {
+    vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
+
+    vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    imageFences[imageIndex] = frameFences[frameIndex];
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &imageAvailableSemaphores[frameIndex],
+        .pWaitDstStageMask    = &waitStage,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffers[imageIndex],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
+    };
+
+    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &frameFences[frameIndex]);
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
+
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &swapchain,
+        .pImageIndices      = &imageIndex,
+        .pResults           = nullptr
+    };
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    frameIndex = (frameIndex + 1) % framesInFlight;
 }

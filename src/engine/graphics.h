@@ -59,6 +59,9 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
     void destroy(VkDevice device);
 
+    void recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent);
+    void draw(VkDevice device);
+
 private:
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
@@ -75,6 +78,10 @@ private:
     VkSemaphore* renderFinishedSemaphores;
     VkFence* imageFences;
     VkFence* frameFences;
+    uint32_t imageIndex;
+    uint32_t frameIndex;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
 };
 
 #endif // !GRAPHICS_H
