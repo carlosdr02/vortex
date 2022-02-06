@@ -75,6 +75,8 @@ private:
     uint32_t framesInFlight;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
+    VkFence* imageFences;
+    VkFence* frameFences;
 };
 
 #endif // !GRAPHICS_H

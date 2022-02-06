@@ -508,6 +508,8 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    imageFences = new VkFence[swapchainImageCount];
+    frameFences = new VkFence[framesInFlight];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -640,8 +642,8 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 
-    // Create the semaphores.
     for (uint32_t i = 0; i < framesInFlight; ++i) {
+        // Create the semaphores.
         VkSemaphoreCreateInfo semaphoreCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             .pNext = nullptr,
@@ -650,11 +652,27 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
 
         vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
         vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+        // Create the fences.
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
+    }
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        imageFences[i] = frameFences[i % framesInFlight];
     }
 }
 
 void Renderer::destroy(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
@@ -671,6 +689,8 @@ void Renderer::destroy(VkDevice device) {
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] frameFences;
+    delete[] imageFences;
     delete[] renderFinishedSemaphores;
     delete[] imageAvailableSemaphores;
     delete[] commandBuffers;
