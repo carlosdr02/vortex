@@ -115,10 +115,8 @@ Window::Window(VkInstance instance, int width, int height, const char* title) {
 }
 
 void Window::destroy(VkInstance instance) {
-    // Destroy the surface.
     vkDestroySurfaceKHR(instance, surface, nullptr);
 
-    // Destroy the window.
     glfwDestroyWindow(window);
 }
 
@@ -468,7 +466,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) : framesInFlight(createInfo.framesInFlight) {
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -508,6 +506,8 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -639,9 +639,26 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     };
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
+
+    // Create the semaphores.
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+    }
 }
 
 void Renderer::destroy(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+    }
+
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkFreeMemory(device, depthImagesMemory, nullptr);
 
@@ -654,6 +671,8 @@ void Renderer::destroy(VkDevice device) {
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] renderFinishedSemaphores;
+    delete[] imageAvailableSemaphores;
     delete[] commandBuffers;
     delete[] framebuffers;
     delete[] depthImageViews;

@@ -29,7 +29,8 @@ int main() {
         .surfaceFormat       = surfaceFormat,
         .presentMode         = presentMode,
         .depthFormat         = depthFormat,
-        .renderPass          = renderPass
+        .renderPass          = renderPass,
+        .framesInFlight      = 3
     };
 
     Renderer renderer(device, rendererCreateInfo, nullptr);

@@ -53,6 +53,7 @@ struct RendererCreateInfo {
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
+    uint32_t framesInFlight;
 };
 
 class Renderer {
@@ -71,6 +72,9 @@ private:
     VkFramebuffer* framebuffers;
     VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
+    uint32_t framesInFlight;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
 };
 
 #endif // !GRAPHICS_H
