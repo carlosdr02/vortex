@@ -34,12 +34,27 @@ int main() {
     };
 
     Renderer renderer(device, rendererCreateInfo, nullptr);
-
     renderer.recordCommandBuffers(renderPass, surfaceCapabilities.currentExtent);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        renderer.draw(device.logical);
+
+        if (!renderer.draw(device.logical)) {
+            int width, height;
+
+            do {
+                glfwGetFramebufferSize(window, &width, &height);
+                glfwWaitEvents();
+            } while (width == 0 || height == 0);
+
+            surfaceCapabilities = device.getSurfaceCapabilities(window);
+
+            Renderer newRenderer(device, rendererCreateInfo, &renderer);
+            newRenderer.recordCommandBuffers(renderPass, surfaceCapabilities.currentExtent);
+
+            renderer.destroy(device.logical);
+            renderer = newRenderer;
+        }
     }
 
     renderer.destroy(device.logical);

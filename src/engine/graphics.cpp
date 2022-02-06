@@ -711,7 +711,7 @@ void Renderer::recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent) 
 
         VkClearValue clearValues[] = {
             { 0.0f, 0.0f, 0.0f, 1.0f },
-            { 1.0f, 0 },
+            { 1.0f, 0 }
         };
 
         VkRenderPassBeginInfo renderPassBeginInfo = {
@@ -743,8 +743,10 @@ void Renderer::recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent) 
     }
 }
 
-void Renderer::draw(VkDevice device) {
-    vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
+bool Renderer::draw(VkDevice device) {
+    if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+        return false;
+    }
 
     vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
     imageFences[imageIndex] = frameFences[frameIndex];
@@ -782,4 +784,6 @@ void Renderer::draw(VkDevice device) {
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     frameIndex = (frameIndex + 1) % framesInFlight;
+
+    return true;
 }

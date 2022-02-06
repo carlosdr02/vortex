@@ -60,7 +60,7 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent);
-    void draw(VkDevice device);
+    bool draw(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
