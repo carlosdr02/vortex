@@ -325,19 +325,6 @@ VkFormat Device::getDepthStencilFormat() {
     return VK_FORMAT_UNDEFINED;
 }
 
-VkMemoryRequirements2 Device::getImageMemoryRequirements(VkImage image) {
-    VkImageMemoryRequirementsInfo2 imageMemoryRequirementsInfo = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-        .pNext = nullptr,
-        .image = image
-    };
-
-    VkMemoryRequirements2 imageMemoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-    vkGetImageMemoryRequirements2(logical, &imageMemoryRequirementsInfo, &imageMemoryRequirements);
-
-    return imageMemoryRequirements;
-}
-
 uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
     VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
     vkGetPhysicalDeviceMemoryProperties2(physical, &physicalDeviceMemoryProperties);
@@ -351,20 +338,6 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     }
 
     return UINT32_MAX;
-}
-
-VkDeviceMemory Device::allocateMemory(VkDeviceSize size, uint32_t memoryTypeIndex) {
-    VkMemoryAllocateInfo memoryAllocateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext           = nullptr,
-        .allocationSize  = size,
-        .memoryTypeIndex = memoryTypeIndex
-    };
-
-    VkDeviceMemory memory;
-    vkAllocateMemory(logical, &memoryAllocateInfo, nullptr, &memory);
-
-    return memory;
 }
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat) {
@@ -538,10 +511,25 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     }
 
     // Allocate device memory.
-    VkMemoryRequirements2 depthImagesMemoryRequirements = device.getImageMemoryRequirements(depthImages[0]);
+    VkImageMemoryRequirementsInfo2 depthImagesMemoryRequirementsInfo = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+        .pNext = nullptr,
+        .image = depthImages[0]
+    };
+
+    VkMemoryRequirements2 depthImagesMemoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+    vkGetImageMemoryRequirements2(device.logical, &depthImagesMemoryRequirementsInfo, &depthImagesMemoryRequirements);
+
     uint32_t memoryTypeIndex = device.getMemoryTypeIndex(depthImagesMemoryRequirements.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    depthImagesMemory = device.allocateMemory(depthImagesMemoryRequirements.memoryRequirements.size * swapchainImageCount, memoryTypeIndex);
+    VkMemoryAllocateInfo depthImagesMemoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = depthImagesMemoryRequirements.memoryRequirements.size * swapchainImageCount,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &depthImagesMemoryAllocateInfo, nullptr, &depthImagesMemory);
 
     VkBindImageMemoryInfo* bindDepthImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
 

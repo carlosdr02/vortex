@@ -39,9 +39,7 @@ public:
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthStencilFormat();
 
-    VkMemoryRequirements2 getImageMemoryRequirements(VkImage image);
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
-    VkDeviceMemory allocateMemory(VkDeviceSize size, uint32_t memoryTypeIndex);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
