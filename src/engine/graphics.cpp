@@ -1,7 +1,5 @@
 #include "graphics.h"
 
-#include <stdint.h>
-
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef _DEBUG
