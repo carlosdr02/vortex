@@ -44,6 +44,15 @@ public:
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
 
+struct GraphicsPipelineCreateInfo {
+    const char* vertexShaderPath;
+    const char* fragmentShaderPath;
+    VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
+};
+
+VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
