@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#include <algorithm>
-
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -136,6 +134,20 @@ static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProper
     return maxDeviceLocalHeapSize;
 }
 
+static uint32_t getMaxSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
+    VkDeviceSize max = 0;
+    uint32_t index = 0;
+
+    for (uint32_t i = 0; i < sizeCount; ++i) {
+        if (sizes[i] > max) {
+            index = i;
+            max = sizes[i];
+        }
+    }
+
+    return index;
+}
+
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     // Select a physical device.
     uint32_t physicalDeviceCount;
@@ -160,7 +172,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(physicalDeviceMemoryProperties);
     }
 
-    uint32_t index = std::max_element(deviceLocalHeapSizes, deviceLocalHeapSizes + physicalDeviceCount) - deviceLocalHeapSizes;
+    uint32_t index = getMaxSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
     physical = physicalDevices[index];
 
     delete[] deviceLocalHeapSizes;
@@ -227,16 +239,30 @@ void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
 }
 
+static uint32_t clamp(int val, uint32_t min, uint32_t max) {
+    if (val > max) {
+        return max;
+    }
+
+    if (val < min) {
+        return min;
+    }
+
+    return val;
+}
+
 VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, window.surface, &surfaceCapabilities);
 
-    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
     uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
 
-    if (minImageCount < 3 && (maxImageCount > minImageCount || maxImageCount == 0)) {
-        ++minImageCount;
+    if (maxImageCount == 0) {
+        maxImageCount = UINT32_MAX;
     }
+
+    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
+    minImageCount = clamp(3, minImageCount, maxImageCount);
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
@@ -244,11 +270,8 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
-        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
-
-        extent.width = std::clamp((uint32_t)width, minExtent.width, maxExtent.width);
-        extent.height = std::clamp((uint32_t)height, minExtent.height, maxExtent.height);
+        extent.width = clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        extent.height = clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
     return surfaceCapabilities;
