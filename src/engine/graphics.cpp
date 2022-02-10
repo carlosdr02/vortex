@@ -1,10 +1,10 @@
 #include "graphics.h"
 
+#include <stdio.h>
+
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef _DEBUG
-#include <stdio.h>
-
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     printf("Debug messenger: %s\n", pCallbackData->pMessage);
 
@@ -120,30 +120,33 @@ Window::operator GLFWwindow*() {
     return window;
 }
 
-static VkDeviceSize getMaxDeviceLocalHeapSize(const VkPhysicalDeviceMemoryProperties2& memoryProperties) {
+static VkDeviceSize getMaxDeviceLocalHeapSize(VkPhysicalDevice physicalDevice) {
+    VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
+    vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &physicalDeviceMemoryProperties);
+
     VkDeviceSize maxDeviceLocalHeapSize = 0;
 
-    for (const VkMemoryHeap& heap : memoryProperties.memoryProperties.memoryHeaps) {
-        if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && heap.size > maxDeviceLocalHeapSize) {
-            maxDeviceLocalHeapSize = heap.size;
+    for (const VkMemoryHeap& memoryHeap : physicalDeviceMemoryProperties.memoryProperties.memoryHeaps) {
+        if (memoryHeap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT && memoryHeap.size > maxDeviceLocalHeapSize) {
+            maxDeviceLocalHeapSize = memoryHeap.size;
         }
     }
 
     return maxDeviceLocalHeapSize;
 }
 
-static uint32_t getMaxSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
-    VkDeviceSize max = 0;
-    uint32_t index = 0;
+static uint32_t getMaxDeviceLocalHeapSizeIndex(uint32_t sizeCount, const VkDeviceSize* sizes) {
+    VkDeviceSize maxDeviceLocalHeapSize = 0;
+    uint32_t maxDeviceLocalHeapSizeIndex = 0;
 
     for (uint32_t i = 0; i < sizeCount; ++i) {
-        if (sizes[i] > max) {
-            index = i;
-            max = sizes[i];
+        if (sizes[i] > maxDeviceLocalHeapSize) {
+            maxDeviceLocalHeapSize = sizes[i];
+            maxDeviceLocalHeapSizeIndex = i;
         }
     }
 
-    return index;
+    return maxDeviceLocalHeapSizeIndex;
 }
 
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
@@ -164,14 +167,11 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
             continue;
         }
 
-        VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-        vkGetPhysicalDeviceMemoryProperties2(physicalDevices[i], &physicalDeviceMemoryProperties);
-
-        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(physicalDeviceMemoryProperties);
+        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(physicalDevices[i]);
     }
 
-    uint32_t index = getMaxSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
-    physical = physicalDevices[index];
+    uint32_t maxDeviceLocalHeapSizeIndex = getMaxDeviceLocalHeapSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
+    physical = physicalDevices[maxDeviceLocalHeapSizeIndex];
 
     delete[] deviceLocalHeapSizes;
     delete[] physicalDevices;
@@ -259,17 +259,14 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
         maxImageCount = UINT32_MAX;
     }
 
-    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
-    minImageCount = clamp(3, minImageCount, maxImageCount);
+    surfaceCapabilities.minImageCount = clamp(3, surfaceCapabilities.minImageCount, maxImageCount);
 
-    VkExtent2D& extent = surfaceCapabilities.currentExtent;
-
-    if (extent.width == UINT32_MAX) {
+    if (surfaceCapabilities.currentExtent.width == UINT32_MAX) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        extent.width = clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        extent.height = clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        surfaceCapabilities.currentExtent.width = clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+        surfaceCapabilities.currentExtent.height = clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
     }
 
     return surfaceCapabilities;
@@ -460,30 +457,19 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
-static void readBinary(const char* fileName, size_t& binarySize, void* binary) {
-    FILE* file = fopen(fileName, "rb");
-
-    if (file) {
-        if (binary) {
-            fread(binary, 1, binarySize, file);
-        } else {
-            fseek(file, 0L, SEEK_END);
-            binarySize = ftell(file);
-            fseek(file, 0L, SEEK_SET);
-        }
-
-        fclose(file);
-    } else {
-        binarySize = 0;
-    }
-}
-
 static VkShaderModule createShaderModule(VkDevice device, const char* fileName) {
+    FILE* file;
+    fopen_s(&file, fileName, "rb");
+
     size_t codeSize;
-    readBinary(fileName, codeSize, nullptr);
+    fseek(file, 0L, SEEK_END);
+    codeSize = ftell(file);
+    fseek(file, 0L, SEEK_SET);
 
     uint32_t* code = new uint32_t[codeSize];
-    readBinary(fileName, codeSize, code);
+    fread(code, 1, codeSize, file);
+
+    fclose(file);
 
     VkShaderModuleCreateInfo shaderModuleCreateInfo = {
         .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
