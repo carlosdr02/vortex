@@ -259,14 +259,20 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
         maxImageCount = UINT32_MAX;
     }
 
-    surfaceCapabilities.minImageCount = clamp(3, surfaceCapabilities.minImageCount, maxImageCount);
+    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
+    minImageCount = clamp(3, minImageCount, maxImageCount);
 
-    if (surfaceCapabilities.currentExtent.width == UINT32_MAX) {
+    VkExtent2D& extent = surfaceCapabilities.currentExtent;
+
+    if (extent.width == UINT32_MAX) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        surfaceCapabilities.currentExtent.width = clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-        surfaceCapabilities.currentExtent.height = clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
+        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
+
+        extent.width = clamp(width, minExtent.width, maxExtent.width);
+        extent.height = clamp(height, minExtent.height, maxExtent.height);
     }
 
     return surfaceCapabilities;
