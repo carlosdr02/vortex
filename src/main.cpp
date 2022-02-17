@@ -16,48 +16,14 @@ int main() {
 
     Device device(instance, window.surface);
 
-    VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(window);
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window.surface);
-    VkPresentModeKHR presentMode = device.getSurfacePresentMode(window.surface);
     VkFormat depthFormat = device.getDepthStencilFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
-    RendererCreateInfo rendererCreateInfo = {
-        .surface             = window.surface,
-        .surfaceCapabilities = &surfaceCapabilities,
-        .surfaceFormat       = surfaceFormat,
-        .presentMode         = presentMode,
-        .depthFormat         = depthFormat,
-        .renderPass          = renderPass,
-        .framesInFlight      = 3
-    };
-
-    Renderer renderer(device, rendererCreateInfo, nullptr);
-    renderer.recordCommandBuffers(renderPass, surfaceCapabilities.currentExtent);
-
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
-        if (!renderer.draw(device.logical)) {
-            int width, height;
-
-            do {
-                glfwGetFramebufferSize(window, &width, &height);
-                glfwWaitEvents();
-            } while (width == 0 || height == 0);
-
-            surfaceCapabilities = device.getSurfaceCapabilities(window);
-
-            Renderer newRenderer(device, rendererCreateInfo, &renderer);
-            newRenderer.recordCommandBuffers(renderPass, surfaceCapabilities.currentExtent);
-
-            renderer.destroy(device.logical);
-            renderer = newRenderer;
-        }
     }
-
-    renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 

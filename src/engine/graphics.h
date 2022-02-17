@@ -53,44 +53,4 @@ struct GraphicsPipelineCreateInfo {
 
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
-struct RendererCreateInfo {
-    VkSurfaceKHR surface;
-    const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
-    VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentMode;
-    VkFormat depthFormat;
-    VkRenderPass renderPass;
-    uint32_t framesInFlight;
-};
-
-class Renderer {
-public:
-    Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
-    void destroy(VkDevice device);
-
-    void recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent);
-    bool draw(VkDevice device);
-
-private:
-    VkSwapchainKHR swapchain;
-    uint32_t swapchainImageCount;
-    VkImage* swapchainImages;
-    VkImage* depthImages;
-    VkDeviceMemory depthImagesMemory;
-    VkImageView* swapchainImageViews;
-    VkImageView* depthImageViews;
-    VkFramebuffer* framebuffers;
-    VkCommandPool commandPool;
-    VkCommandBuffer* commandBuffers;
-    uint32_t framesInFlight;
-    VkSemaphore* imageAvailableSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
-    VkFence* imageFences;
-    VkFence* frameFences;
-    uint32_t imageIndex;
-    uint32_t frameIndex;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-};
-
 #endif // !GRAPHICS_H
