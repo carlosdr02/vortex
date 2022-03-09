@@ -657,29 +657,24 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 }
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
+    // Create the command pool.
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = device.queueFamilyIndex
+    };
+
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-        vkDestroyImageView(device, depthImageViews[i], nullptr);
-        vkDestroyImageView(device, swapchainImageViews[i], nullptr);
-    }
+    destroySwapchainResources(device);
 
-    vkFreeMemory(device, depthImagesMemory, nullptr);
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        vkDestroyImage(device, depthImages[i], nullptr);
-    }
-
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
-
-    delete[] framebuffers;
-    delete[] depthImageViews;
-    delete[] swapchainImageViews;
-    delete[] depthImages;
-    delete[] swapchainImages;
+    vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -720,6 +715,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     swapchainImageViews = new VkImageView[swapchainImageCount];
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
+    commandBuffers = new VkCommandBuffer[swapchainImageCount];
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -851,4 +847,38 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
+
+    // Allocate the command buffers.
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = swapchainImageCount
+    };
+
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
+}
+
+void Renderer::destroySwapchainResources(VkDevice device) {
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyFramebuffer(device, framebuffers[i], nullptr);
+        vkDestroyImageView(device, depthImageViews[i], nullptr);
+        vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, depthImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImage(device, depthImages[i], nullptr);
+    }
+
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
+
+    delete[] commandBuffers;
+    delete[] framebuffers;
+    delete[] depthImageViews;
+    delete[] swapchainImageViews;
+    delete[] depthImages;
+    delete[] swapchainImages;
 }

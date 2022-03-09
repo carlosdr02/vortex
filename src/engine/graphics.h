@@ -68,6 +68,7 @@ public:
     void destroy(VkDevice device);
 
 private:
+    VkCommandPool commandPool;
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
@@ -76,8 +77,10 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkCommandBuffer* commandBuffers;
 
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
+    void destroySwapchainResources(VkDevice device);
 };
 
 #endif // !GRAPHICS_H
