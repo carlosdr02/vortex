@@ -54,13 +54,13 @@ struct GraphicsPipelineCreateInfo {
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
 struct RendererCreateInfo {
-    uint32_t framesInFlight;
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
+    uint32_t framesInFlight;
 };
 
 class Renderer {
@@ -69,11 +69,6 @@ public:
     void destroy(VkDevice device);
 
 private:
-    VkCommandPool commandPool;
-    uint32_t framesInFlight;
-    VkSemaphore* imageAvailableSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
-    VkFence* frameFences;
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
@@ -82,7 +77,13 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
+    uint32_t framesInFlight;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* imageFences;
+    VkFence* frameFences;
 
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);

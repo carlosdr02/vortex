@@ -667,6 +667,9 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
+    // Create the swapchain resources.
+    createSwapchainResources(device, createInfo);
+
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -692,19 +695,16 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
         vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
-
-    // Create the swapchain resources.
-    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
-    destroySwapchainResources(device);
-
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
+
+    destroySwapchainResources(device);
 
     vkDestroyCommandPool(device, commandPool, nullptr);
 
@@ -752,6 +752,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
+    imageFences = new VkFence[swapchainImageCount]();
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -913,6 +914,7 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] imageFences;
     delete[] commandBuffers;
     delete[] framebuffers;
     delete[] depthImageViews;
