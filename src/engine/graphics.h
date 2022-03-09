@@ -68,6 +68,8 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
+
 private:
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;

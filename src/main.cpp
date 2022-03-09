@@ -34,6 +34,7 @@ int main() {
     };
 
     Renderer renderer(device, rendererCreateInfo);
+    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

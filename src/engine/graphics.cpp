@@ -713,6 +713,60 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
+
+    vkResetCommandPool(device, commandPool, 0);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo);
+
+        VkRect2D renderArea = {
+            .offset = { 0, 0 },
+            .extent = viewport
+        };
+
+        VkClearValue clearValues[] = {
+            { 0.0f, 0.0f, 0.0f, 1.0f },
+            { 1.0f, 0 }
+        };
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {
+            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext           = nullptr,
+            .renderPass      = renderPass,
+            .framebuffer     = framebuffers[i],
+            .renderArea      = renderArea,
+            .clearValueCount = COUNT_OF(clearValues),
+            .pClearValues    = clearValues
+        };
+
+        VkSubpassBeginInfo subpassBeginInfo = {
+            .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+            .pNext    = nullptr,
+            .contents = VK_SUBPASS_CONTENTS_INLINE
+        };
+
+        vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
+
+        VkSubpassEndInfo subpassEndInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+            .pNext = nullptr
+        };
+
+        vkCmdEndRenderPass2(commandBuffers[i], &subpassEndInfo);
+
+        vkEndCommandBuffer(commandBuffers[i]);
+    }
+}
+
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
