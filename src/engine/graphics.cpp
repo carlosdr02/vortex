@@ -656,7 +656,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -667,12 +667,39 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        // Create the semaphores.
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+        // Create the fences.
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
+    }
+
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyFence(device, frameFences[i], nullptr);
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+    }
 
     vkDestroyCommandPool(device, commandPool, nullptr);
 }

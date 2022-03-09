@@ -54,6 +54,7 @@ struct GraphicsPipelineCreateInfo {
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
 struct RendererCreateInfo {
+    uint32_t framesInFlight;
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
@@ -69,6 +70,10 @@ public:
 
 private:
     VkCommandPool commandPool;
+    uint32_t framesInFlight;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* frameFences;
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;

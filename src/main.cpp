@@ -24,6 +24,7 @@ int main() {
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
     RendererCreateInfo rendererCreateInfo = {
+        .framesInFlight      = 3,
         .surface             = window.surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
