@@ -667,6 +667,11 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
+    // Allocate host memory.
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    frameFences = new VkFence[framesInFlight];
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         // Create the semaphores.
         VkSemaphoreCreateInfo semaphoreCreateInfo = {
@@ -702,6 +707,10 @@ void Renderer::destroy(VkDevice device) {
     }
 
     vkDestroyCommandPool(device, commandPool, nullptr);
+
+    delete[] frameFences;
+    delete[] renderFinishedSemaphores;
+    delete[] imageAvailableSemaphores;
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -888,6 +897,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
+    vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
+
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, depthImageViews[i], nullptr);
