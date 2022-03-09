@@ -53,4 +53,31 @@ struct GraphicsPipelineCreateInfo {
 
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
+struct RendererCreateInfo {
+    VkSurfaceKHR surface;
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+    VkFormat depthFormat;
+    VkRenderPass renderPass;
+};
+
+class Renderer {
+public:
+    Renderer(Device& device, const RendererCreateInfo& createInfo);
+    void destroy(VkDevice device);
+
+private:
+    VkSwapchainKHR swapchain;
+    uint32_t swapchainImageCount;
+    VkImage* swapchainImages;
+    VkImage* depthImages;
+    VkDeviceMemory depthImagesMemory;
+    VkImageView* swapchainImageViews;
+    VkImageView* depthImageViews;
+    VkFramebuffer* framebuffers;
+
+    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
+};
+
 #endif // !GRAPHICS_H
