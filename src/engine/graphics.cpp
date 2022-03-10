@@ -656,7 +656,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -695,9 +695,15 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
         vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
+
+    // Get the device queues.
+    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
+    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 }
 
 void Renderer::destroy(VkDevice device) {
+    waitIdle(device);
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -714,7 +720,7 @@ void Renderer::destroy(VkDevice device) {
 }
 
 void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
-    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
+    waitIdle(device);
 
     vkResetCommandPool(device, commandPool, 0);
 
@@ -765,6 +771,50 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
 
         vkEndCommandBuffer(commandBuffers[i]);
     }
+}
+
+void Renderer::draw(VkDevice device) {
+    vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
+
+    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+    imageFences[imageIndex] = frameFences[frameIndex];
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &imageAvailableSemaphores[frameIndex],
+        .pWaitDstStageMask    = &waitStage,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffers[imageIndex],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
+    };
+
+    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &frameFences[frameIndex]);
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
+
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &swapchain,
+        .pImageIndices      = &imageIndex,
+        .pResults           = nullptr
+    };
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    frameIndex = (frameIndex + 1) % framesInFlight;
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -952,6 +1002,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
+    waitIdle(device);
+
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -975,4 +1027,8 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
+}
+
+void Renderer::waitIdle(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }

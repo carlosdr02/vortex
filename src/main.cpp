@@ -38,6 +38,7 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        renderer.draw(device.logical);
     }
 
     renderer.destroy(device.logical);
