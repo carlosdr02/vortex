@@ -69,7 +69,12 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
-    void draw(VkDevice device);
+    bool draw(VkDevice device);
+
+    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
+    void destroySwapchainResources(VkDevice device);
+
+    void waitIdle(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
@@ -91,11 +96,6 @@ private:
     uint32_t frameIndex;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
-
-    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
-    void destroySwapchainResources(VkDevice device);
-
-    void waitIdle(VkDevice device);
 };
 
 #endif // !GRAPHICS_H

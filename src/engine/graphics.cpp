@@ -702,8 +702,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 }
 
 void Renderer::destroy(VkDevice device) {
-    waitIdle(device);
-
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -720,8 +718,6 @@ void Renderer::destroy(VkDevice device) {
 }
 
 void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
-    waitIdle(device);
-
     vkResetCommandPool(device, commandPool, 0);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -773,8 +769,10 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
     }
 }
 
-void Renderer::draw(VkDevice device) {
-    vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
+bool Renderer::draw(VkDevice device) {
+    if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+        return false;
+    }
 
     if (imageFences[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
@@ -815,6 +813,8 @@ void Renderer::draw(VkDevice device) {
     vkQueuePresentKHR(presentQueue, &presentInfo);
 
     frameIndex = (frameIndex + 1) % framesInFlight;
+
+    return true;
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -1002,8 +1002,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
-    waitIdle(device);
-
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {

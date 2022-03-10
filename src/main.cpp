@@ -38,9 +38,24 @@ int main() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        renderer.draw(device.logical);
+
+        if (!renderer.draw(device.logical)) {
+            int width, height;
+
+            do {
+                glfwGetFramebufferSize(window, &width, &height);
+                glfwWaitEvents();
+            } while(width == 0 || height == 0);
+
+            surfaceCapabilities = device.getSurfaceCapabilities(window);
+            renderer.waitIdle(device.logical);
+            renderer.destroySwapchainResources(device.logical);
+            renderer.createSwapchainResources(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
+        }
     }
 
+    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
