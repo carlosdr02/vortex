@@ -656,7 +656,69 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) {
+    VkSwapchainKHR oldSwapchain;
+
+    if (oldRenderer) {
+        commandPool = oldRenderer->commandPool;
+        framesInFlight = oldRenderer->framesInFlight;
+        imageAvailableSemaphores = oldRenderer->imageAvailableSemaphores;
+        renderFinishedSemaphores = oldRenderer->renderFinishedSemaphores;
+        frameFences = oldRenderer->frameFences;
+        frameIndex = oldRenderer->frameIndex;
+        graphicsQueue = oldRenderer->graphicsQueue;
+        presentQueue = oldRenderer->presentQueue;
+
+        oldRenderer->imageAvailableSemaphores = nullptr;
+
+        oldSwapchain = oldRenderer->swapchain;
+    } else {
+        framesInFlight = createInfo.framesInFlight;
+        frameIndex = 0;
+
+        oldSwapchain = VK_NULL_HANDLE;
+
+        // Create the command pool.
+        VkCommandPoolCreateInfo commandPoolCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .queueFamilyIndex = device.queueFamilyIndex
+        };
+
+        vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+        // Allocate host memory.
+        imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+        renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+        frameFences = new VkFence[framesInFlight];
+
+        for (uint32_t i = 0; i < framesInFlight; ++i) {
+            // Create the semaphores.
+            VkSemaphoreCreateInfo semaphoreCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0
+            };
+
+            vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+            vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+            // Create the fences.
+            VkFenceCreateInfo fenceCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = VK_FENCE_CREATE_SIGNALED_BIT
+            };
+
+            vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
+        }
+
+        // Get the device queues.
+        vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
+    }
+
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -679,10 +741,9 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode           = createInfo.presentMode,
-        .clipped               = VK_TRUE
+        .clipped               = VK_TRUE,
+        .oldSwapchain          = oldSwapchain
     };
-
-    swapchainCreateInfo.oldSwapchain = oldRenderer ? oldRenderer->swapchain : VK_NULL_HANDLE;
 
     vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
 
@@ -696,17 +757,14 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
-    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
-    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    imageFences = new VkFence[swapchainImageCount];
-    frameFences = new VkFence[framesInFlight];
+    imageFences = new VkFence[swapchainImageCount]();
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
     // Create the depth images.
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageCreateInfo depthImageCreateInfo = {
+        VkImageCreateInfo imageCreateInfo = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext                 = nullptr,
             .flags                 = 0,
@@ -724,51 +782,51 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
         };
 
-        vkCreateImage(device.logical, &depthImageCreateInfo, nullptr, &depthImages[i]);
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &depthImages[i]);
     }
 
     // Allocate device memory.
-    VkImageMemoryRequirementsInfo2 depthImagesMemoryRequirementsInfo = {
+    VkImageMemoryRequirementsInfo2 imageMemoryRequirementsInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
         .pNext = nullptr,
         .image = depthImages[0]
     };
 
-    VkMemoryRequirements2 depthImagesMemoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-    vkGetImageMemoryRequirements2(device.logical, &depthImagesMemoryRequirementsInfo, &depthImagesMemoryRequirements);
+    VkMemoryRequirements2 memoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+    vkGetImageMemoryRequirements2(device.logical, &imageMemoryRequirementsInfo, &memoryRequirements);
 
-    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(depthImagesMemoryRequirements.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    VkMemoryAllocateInfo depthImagesMemoryAllocateInfo = {
+    VkMemoryAllocateInfo memoryAllocateInfo = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .pNext           = nullptr,
-        .allocationSize  = depthImagesMemoryRequirements.memoryRequirements.size * swapchainImageCount,
+        .allocationSize  = swapchainImageCount * memoryRequirements.memoryRequirements.size,
         .memoryTypeIndex = memoryTypeIndex
     };
 
-    vkAllocateMemory(device.logical, &depthImagesMemoryAllocateInfo, nullptr, &depthImagesMemory);
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &depthImagesMemory);
 
-    VkBindImageMemoryInfo* bindDepthImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkBindImageMemoryInfo bindDepthImageMemoryInfo = {
+        VkBindImageMemoryInfo bindImageMemoryInfo = {
             .sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
             .pNext        = nullptr,
             .image        = depthImages[i],
             .memory       = depthImagesMemory,
-            .memoryOffset = i * depthImagesMemoryRequirements.memoryRequirements.size
+            .memoryOffset = i * memoryRequirements.memoryRequirements.size
         };
 
-        bindDepthImageMemoryInfos[i] = bindDepthImageMemoryInfo;
+        bindImageMemoryInfos[i] = bindImageMemoryInfo;
     }
 
-    vkBindImageMemory2(device.logical, swapchainImageCount, bindDepthImageMemoryInfos);
+    vkBindImageMemory2(device.logical, swapchainImageCount, bindImageMemoryInfos);
 
-    delete[] bindDepthImageMemoryInfos;
+    delete[] bindImageMemoryInfos;
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         // Create the swapchain image views.
-        VkImageSubresourceRange subresourceRange = {
+        VkImageSubresourceRange swapchainImageSubresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel   = 0,
             .levelCount     = 1,
@@ -776,7 +834,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
             .layerCount     = 1
         };
 
-        VkImageViewCreateInfo imageViewCreateInfo = {
+        VkImageViewCreateInfo swapchainImageViewCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext            = nullptr,
             .flags            = 0,
@@ -784,13 +842,19 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
             .format           = surfaceFormat.format,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = subresourceRange
+            .subresourceRange = swapchainImageSubresourceRange
         };
 
-        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+        vkCreateImageView(device.logical, &swapchainImageViewCreateInfo, nullptr, &swapchainImageViews[i]);
 
         // Create the depth image views.
-        subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        VkImageSubresourceRange depthImageSubresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
 
         VkImageViewCreateInfo depthImageViewCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -800,7 +864,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
             .format           = createInfo.depthFormat,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = subresourceRange
+            .subresourceRange = depthImageSubresourceRange
         };
 
         vkCreateImageView(device.logical, &depthImageViewCreateInfo, nullptr, &depthImageViews[i]);
@@ -826,16 +890,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 
-    // Create the command pool.
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {
-        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = device.queueFamilyIndex
-    };
-
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
-
     // Allocate the command buffers.
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -846,71 +900,55 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Rendere
     };
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        // Create the semaphores.
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-        };
-
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
-
-        // Create the fences.
-        VkFenceCreateInfo fenceCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-        };
-
-        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
-    }
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        imageFences[i] = frameFences[i % framesInFlight];
-    }
-
-    // Get the device queues.
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 }
 
 void Renderer::destroy(VkDevice device) {
-    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
+    waitIdle(device);
 
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyFence(device, frameFences[i], nullptr);
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-    }
-
-    vkDestroyCommandPool(device, commandPool, nullptr);
-    vkFreeMemory(device, depthImagesMemory, nullptr);
+    vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, depthImageViews[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, depthImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyImage(device, depthImages[i], nullptr);
     }
 
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
-
-    delete[] frameFences;
     delete[] imageFences;
-    delete[] renderFinishedSemaphores;
-    delete[] imageAvailableSemaphores;
     delete[] commandBuffers;
     delete[] framebuffers;
     delete[] depthImageViews;
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
+
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
+
+    if (imageAvailableSemaphores) {
+        for (uint32_t i = 0; i < framesInFlight; ++i) {
+            vkDestroyFence(device, frameFences[i], nullptr);
+            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+        }
+
+        delete[] frameFences;
+        delete[] renderFinishedSemaphores;
+        delete[] imageAvailableSemaphores;
+
+        vkDestroyCommandPool(device, commandPool, nullptr);
+    }
 }
 
-void Renderer::recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent) {
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
+    waitIdle(device);
+
+    vkResetCommandPool(device, commandPool, 0);
+
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkCommandBufferBeginInfo commandBufferBeginInfo = {
             .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -923,7 +961,7 @@ void Renderer::recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent) 
 
         VkRect2D renderArea = {
             .offset = { 0, 0 },
-            .extent = extent
+            .extent = viewport
         };
 
         VkClearValue clearValues[] = {
@@ -965,7 +1003,10 @@ bool Renderer::draw(VkDevice device) {
         return false;
     }
 
-    vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
     imageFences[imageIndex] = frameFences[frameIndex];
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1003,4 +1044,8 @@ bool Renderer::draw(VkDevice device) {
     frameIndex = (frameIndex + 1) % framesInFlight;
 
     return true;
+}
+
+void Renderer::waitIdle(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }

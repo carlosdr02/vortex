@@ -68,7 +68,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkRenderPass renderPass, VkExtent2D extent);
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
     bool draw(VkDevice device);
 
 private:
@@ -91,6 +91,8 @@ private:
     uint32_t frameIndex;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+
+    void waitIdle(VkDevice device);
 };
 
 #endif // !GRAPHICS_H
