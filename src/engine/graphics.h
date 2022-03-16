@@ -58,25 +58,28 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
+    uint32_t framesInFlight;
     VkFormat depthFormat;
     VkRenderPass renderPass;
-    uint32_t framesInFlight;
 };
 
 class Renderer {
 public:
-    Renderer(Device& device, const RendererCreateInfo& createInfo);
+    Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
     bool draw(VkDevice device);
 
-    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
-    void destroySwapchainResources(VkDevice device);
-
-    void waitIdle(VkDevice device);
-
 private:
+    VkCommandPool commandPool;
+    uint32_t framesInFlight;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* frameFences;
+    uint32_t frameIndex;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
@@ -85,17 +88,11 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
-    VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
-    uint32_t framesInFlight;
-    VkSemaphore* imageAvailableSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
     VkFence* imageFences;
-    VkFence* frameFences;
     uint32_t imageIndex;
-    uint32_t frameIndex;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
+
+    void waitIdle(VkDevice device);
 };
 
 #endif // !GRAPHICS_H

@@ -656,168 +656,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
-    // Create the command pool.
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {
-        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = device.queueFamilyIndex
-    };
-
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
-
-    // Create the swapchain resources.
-    createSwapchainResources(device, createInfo);
-
-    // Allocate host memory.
-    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
-    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    frameFences = new VkFence[framesInFlight];
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        // Create the semaphores.
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-        };
-
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
-
-        // Create the fences.
-        VkFenceCreateInfo fenceCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-        };
-
-        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
-    }
-
-    // Get the device queues.
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
-}
-
-void Renderer::destroy(VkDevice device) {
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyFence(device, frameFences[i], nullptr);
-        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-    }
-
-    destroySwapchainResources(device);
-
-    vkDestroyCommandPool(device, commandPool, nullptr);
-
-    delete[] frameFences;
-    delete[] renderFinishedSemaphores;
-    delete[] imageAvailableSemaphores;
-}
-
-void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
-    vkResetCommandPool(device, commandPool, 0);
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkCommandBufferBeginInfo commandBufferBeginInfo = {
-            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .pInheritanceInfo = nullptr
-        };
-
-        vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo);
-
-        VkRect2D renderArea = {
-            .offset = { 0, 0 },
-            .extent = viewport
-        };
-
-        VkClearValue clearValues[] = {
-            { 0.0f, 0.0f, 0.0f, 1.0f },
-            { 1.0f, 0 }
-        };
-
-        VkRenderPassBeginInfo renderPassBeginInfo = {
-            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .pNext           = nullptr,
-            .renderPass      = renderPass,
-            .framebuffer     = framebuffers[i],
-            .renderArea      = renderArea,
-            .clearValueCount = COUNT_OF(clearValues),
-            .pClearValues    = clearValues
-        };
-
-        VkSubpassBeginInfo subpassBeginInfo = {
-            .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-            .pNext    = nullptr,
-            .contents = VK_SUBPASS_CONTENTS_INLINE
-        };
-
-        vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
-
-        VkSubpassEndInfo subpassEndInfo = {
-            .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
-            .pNext = nullptr
-        };
-
-        vkCmdEndRenderPass2(commandBuffers[i], &subpassEndInfo);
-
-        vkEndCommandBuffer(commandBuffers[i]);
-    }
-}
-
-bool Renderer::draw(VkDevice device) {
-    if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
-        return false;
-    }
-
-    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
-    }
-
-    imageFences[imageIndex] = frameFences[frameIndex];
-
-    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    VkSubmitInfo submitInfo = {
-        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext                = nullptr,
-        .waitSemaphoreCount   = 1,
-        .pWaitSemaphores      = &imageAvailableSemaphores[frameIndex],
-        .pWaitDstStageMask    = &waitStage,
-        .commandBufferCount   = 1,
-        .pCommandBuffers      = &commandBuffers[imageIndex],
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
-    };
-
-    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &frameFences[frameIndex]);
-
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
-
-    VkPresentInfoKHR presentInfo = {
-        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext              = nullptr,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
-        .swapchainCount     = 1,
-        .pSwapchains        = &swapchain,
-        .pImageIndices      = &imageIndex,
-        .pResults           = nullptr
-    };
-
-    vkQueuePresentKHR(presentQueue, &presentInfo);
-
-    frameIndex = (frameIndex + 1) % framesInFlight;
-
-    return true;
-}
-
-void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer) {
     // Create the swapchain.
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -840,9 +679,68 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode           = createInfo.presentMode,
-        .clipped               = VK_TRUE,
-        .oldSwapchain          = VK_NULL_HANDLE
+        .clipped               = VK_TRUE
     };
+
+    if (oldRenderer) {
+        commandPool = oldRenderer->commandPool;
+        framesInFlight = oldRenderer->framesInFlight;
+        imageAvailableSemaphores = oldRenderer->imageAvailableSemaphores;
+        renderFinishedSemaphores = oldRenderer->renderFinishedSemaphores;
+        frameFences = oldRenderer->frameFences;
+        frameIndex = oldRenderer->frameIndex;
+        graphicsQueue = oldRenderer->graphicsQueue;
+        presentQueue = oldRenderer->presentQueue;
+
+        oldRenderer->imageAvailableSemaphores = nullptr;
+
+        swapchainCreateInfo.oldSwapchain = oldRenderer->swapchain;
+    } else {
+        framesInFlight = createInfo.framesInFlight;
+        frameIndex = 0;
+
+        swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+
+        // Create the command pool.
+        VkCommandPoolCreateInfo commandPoolCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .queueFamilyIndex = device.queueFamilyIndex
+        };
+
+        vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+        // Allocate host memory.
+        imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+        renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+        frameFences = new VkFence[framesInFlight];
+
+        for (uint32_t i = 0; i < framesInFlight; ++i) {
+            // Create the semaphores.
+            VkSemaphoreCreateInfo semaphoreCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = 0
+            };
+
+            vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+            vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+            // Create the fences.
+            VkFenceCreateInfo fenceCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                .pNext = nullptr,
+                .flags = VK_FENCE_CREATE_SIGNALED_BIT
+            };
+
+            vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
+        }
+
+        // Get the device queues.
+        vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
+        vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
+    }
 
     vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
 
@@ -1001,7 +899,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 }
 
-void Renderer::destroySwapchainResources(VkDevice device) {
+void Renderer::destroy(VkDevice device) {
+    waitIdle(device);
+
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -1025,6 +925,122 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
+
+    if (imageAvailableSemaphores) {
+        for (uint32_t i = 0; i < framesInFlight; ++i) {
+            vkDestroyFence(device, frameFences[i], nullptr);
+            vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+        }
+
+        vkDestroyCommandPool(device, commandPool, nullptr);
+
+        delete[] frameFences;
+        delete[] renderFinishedSemaphores;
+        delete[] imageAvailableSemaphores;
+    }
+}
+
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
+    waitIdle(device);
+
+    vkResetCommandPool(device, commandPool, 0);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo);
+
+        VkRect2D renderArea = {
+            .offset = { 0, 0 },
+            .extent = viewport
+        };
+
+        VkClearValue clearValues[] = {
+            { 0.0f, 0.0f, 0.0f, 1.0f },
+            { 1.0f, 0 }
+        };
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {
+            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext           = nullptr,
+            .renderPass      = renderPass,
+            .framebuffer     = framebuffers[i],
+            .renderArea      = renderArea,
+            .clearValueCount = COUNT_OF(clearValues),
+            .pClearValues    = clearValues
+        };
+
+        VkSubpassBeginInfo subpassBeginInfo = {
+            .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+            .pNext    = nullptr,
+            .contents = VK_SUBPASS_CONTENTS_INLINE
+        };
+
+        vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
+
+        VkSubpassEndInfo subpassEndInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+            .pNext = nullptr
+        };
+
+        vkCmdEndRenderPass2(commandBuffers[i], &subpassEndInfo);
+
+        vkEndCommandBuffer(commandBuffers[i]);
+    }
+}
+
+bool Renderer::draw(VkDevice device) {
+    if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+        return false;
+    }
+
+    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+    imageFences[imageIndex] = frameFences[frameIndex];
+
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 1,
+        .pWaitSemaphores      = &imageAvailableSemaphores[frameIndex],
+        .pWaitDstStageMask    = &waitStage,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffers[imageIndex],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
+    };
+
+    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &frameFences[frameIndex]);
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
+
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &swapchain,
+        .pImageIndices      = &imageIndex,
+        .pResults           = nullptr
+    };
+
+    vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    frameIndex = (frameIndex + 1) % framesInFlight;
+
+    return true;
 }
 
 void Renderer::waitIdle(VkDevice device) {

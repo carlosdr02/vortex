@@ -28,12 +28,12 @@ int main() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .presentMode         = presentMode,
+        .framesInFlight      = 3,
         .depthFormat         = depthFormat,
-        .renderPass          = renderPass,
-        .framesInFlight      = 3
+        .renderPass          = renderPass
     };
 
-    Renderer renderer(device, rendererCreateInfo);
+    Renderer renderer(device, rendererCreateInfo, nullptr);
     renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     while (!glfwWindowShouldClose(window)) {
@@ -48,14 +48,13 @@ int main() {
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
-            renderer.waitIdle(device.logical);
-            renderer.destroySwapchainResources(device.logical);
-            renderer.createSwapchainResources(device, rendererCreateInfo);
+            Renderer newRenderer(device, rendererCreateInfo, &renderer);
+            renderer.destroy(device.logical);
+            renderer = newRenderer;
             renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
         }
     }
 
-    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
