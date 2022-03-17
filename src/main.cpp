@@ -33,7 +33,7 @@ int main() {
         .framesInFlight      = 3
     };
 
-    Renderer renderer(device, rendererCreateInfo, nullptr);
+    Renderer renderer(device, rendererCreateInfo);
     renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     while (!glfwWindowShouldClose(window)) {
@@ -48,9 +48,7 @@ int main() {
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
-            Renderer newRenderer(device, rendererCreateInfo, &renderer);
-            renderer.destroy(device.logical);
-            renderer = newRenderer;
+            renderer.recreate(device, rendererCreateInfo);
             renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
         }
     }

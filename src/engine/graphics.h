@@ -65,7 +65,8 @@ struct RendererCreateInfo {
 
 class Renderer {
 public:
-    Renderer(Device& device, const RendererCreateInfo& createInfo, Renderer* oldRenderer);
+    Renderer(Device& device, const RendererCreateInfo& createInfo);
+    void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
@@ -91,6 +92,9 @@ private:
     uint32_t frameIndex;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+
+    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+    void destroySwapchainResources(VkDevice device);
 
     void waitIdle(VkDevice device);
 };
