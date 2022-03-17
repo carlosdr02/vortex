@@ -697,19 +697,34 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
     vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 
+    // Create the swapchain.
+    createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+
     // Create the swapchain resources.
-    createSwapchainResources(device, createInfo, VK_NULL_HANDLE);
+    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
-    VkSwapchainKHR oldSwapchain = swapchain;
-    swapchain = VK_NULL_HANDLE;
+    // Destroy the old swapchain resources.
     destroySwapchainResources(device.logical);
-    createSwapchainResources(device, createInfo, oldSwapchain);
+
+    // Store the old swapchain.
+    VkSwapchainKHR oldSwapchain = swapchain;
+
+    // Create the new swapchain.
+    createSwapchain(device.logical, createInfo, oldSwapchain);
+
+    // Destroy the old swapchain.
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
+
+    // Create the new swapchain resources.
+    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
+
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
@@ -826,11 +841,9 @@ bool Renderer::draw(VkDevice device) {
     return true;
 }
 
-void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
-    // Create the swapchain.
+void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
-    VkExtent2D extent = surfaceCapabilities->currentExtent;
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo = {
         .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -840,7 +853,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         .minImageCount         = surfaceCapabilities->minImageCount,
         .imageFormat           = surfaceFormat.format,
         .imageColorSpace       = surfaceFormat.colorSpace,
-        .imageExtent           = extent,
+        .imageExtent           = surfaceCapabilities->currentExtent,
         .imageArrayLayers      = 1,
         .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
@@ -853,12 +866,10 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         .oldSwapchain          = oldSwapchain
     };
 
-    vkCreateSwapchainKHR(device.logical, &swapchainCreateInfo, nullptr, &swapchain);
+    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
+}
 
-    if (oldSwapchain != VK_NULL_HANDLE) {
-        vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
-    }
-
+void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
@@ -875,6 +886,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
     // Create the depth images.
+    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkImageCreateInfo imageCreateInfo = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -952,7 +965,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .flags            = 0,
             .image            = swapchainImages[i],
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = surfaceFormat.format,
+            .format           = createInfo.surfaceFormat.format,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
             .subresourceRange = swapchainImageSubresourceRange
         };
@@ -1038,10 +1051,6 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
-
-    if (swapchain != VK_NULL_HANDLE) {
-        vkDestroySwapchainKHR(device, swapchain, nullptr);
-    }
 }
 
 void Renderer::waitIdle(VkDevice device) {

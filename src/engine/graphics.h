@@ -93,7 +93,9 @@ private:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
 
-    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+    void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+
+    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
 
     void waitIdle(VkDevice device);
