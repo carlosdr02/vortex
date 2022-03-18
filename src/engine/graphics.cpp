@@ -467,9 +467,8 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     FILE* file;
     fopen_s(&file, fileName, "rb");
 
-    size_t codeSize;
     fseek(file, 0L, SEEK_END);
-    codeSize = ftell(file);
+    size_t codeSize = ftell(file);
     fseek(file, 0L, SEEK_SET);
 
     uint32_t* code = new uint32_t[codeSize];
@@ -656,6 +655,37 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
+VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .surface               = createInfo.surface,
+        .minImageCount         = surfaceCapabilities->minImageCount,
+        .imageFormat           = surfaceFormat.format,
+        .imageColorSpace       = surfaceFormat.colorSpace,
+        .imageExtent           = surfaceCapabilities->currentExtent,
+        .imageArrayLayers      = 1,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr,
+        .preTransform          = surfaceCapabilities->currentTransform,
+        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode           = createInfo.presentMode,
+        .clipped               = VK_TRUE,
+        .oldSwapchain          = oldSwapchain
+    };
+
+    VkSwapchainKHR swapchain;
+    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
+
+    return swapchain;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
@@ -698,7 +728,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 
     // Create the swapchain.
-    createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+    swapchain = createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -708,14 +738,14 @@ void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
     // Destroy the old swapchain resources.
     destroySwapchainResources(device.logical);
 
-    // Store the old swapchain.
-    VkSwapchainKHR oldSwapchain = swapchain;
-
     // Create the new swapchain.
-    createSwapchain(device.logical, createInfo, oldSwapchain);
+    VkSwapchainKHR newSwapchain = createSwapchain(device.logical, createInfo, swapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
+    vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
+
+    // Store the new swapchain.
+    swapchain = newSwapchain;
 
     // Create the new swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -839,34 +869,6 @@ bool Renderer::draw(VkDevice device) {
     frameIndex = (frameIndex + 1) % framesInFlight;
 
     return true;
-}
-
-void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
-    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
-    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
-
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .surface               = createInfo.surface,
-        .minImageCount         = surfaceCapabilities->minImageCount,
-        .imageFormat           = surfaceFormat.format,
-        .imageColorSpace       = surfaceFormat.colorSpace,
-        .imageExtent           = surfaceCapabilities->currentExtent,
-        .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices   = nullptr,
-        .preTransform          = surfaceCapabilities->currentTransform,
-        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = createInfo.presentMode,
-        .clipped               = VK_TRUE,
-        .oldSwapchain          = oldSwapchain
-    };
-
-    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
