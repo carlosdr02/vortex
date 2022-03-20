@@ -953,7 +953,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         // Create the swapchain image views.
-        VkImageSubresourceRange swapchainImageSubresourceRange = {
+        VkImageSubresourceRange imageSubresourceRange = {
             .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseMipLevel   = 0,
             .levelCount     = 1,
@@ -961,7 +961,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .layerCount     = 1
         };
 
-        VkImageViewCreateInfo swapchainImageViewCreateInfo = {
+        VkImageViewCreateInfo imageViewCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext            = nullptr,
             .flags            = 0,
@@ -969,32 +969,17 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
             .format           = createInfo.surfaceFormat.format,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = swapchainImageSubresourceRange
+            .subresourceRange = imageSubresourceRange
         };
 
-        vkCreateImageView(device.logical, &swapchainImageViewCreateInfo, nullptr, &swapchainImageViews[i]);
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
 
         // Create the depth image views.
-        VkImageSubresourceRange depthImageSubresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
+        imageViewCreateInfo.image = depthImages[i];
+        imageViewCreateInfo.format = createInfo.depthFormat;
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-        VkImageViewCreateInfo depthImageViewCreateInfo = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .image            = depthImages[i],
-            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = createInfo.depthFormat,
-            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = depthImageSubresourceRange
-        };
-
-        vkCreateImageView(device.logical, &depthImageViewCreateInfo, nullptr, &depthImageViews[i]);
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &depthImageViews[i]);
 
         // Create the framebuffers.
         VkImageView attachments[] = {
