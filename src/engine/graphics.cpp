@@ -687,6 +687,11 @@ VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& create
 }
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
+    // Allocate host memory.
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    frameFences = new VkFence[framesInFlight];
+
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -696,11 +701,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     };
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
-
-    // Allocate host memory.
-    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
-    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    frameFences = new VkFence[framesInFlight];
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         // Create the semaphores.
@@ -762,11 +762,11 @@ void Renderer::destroy(VkDevice device) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
 
+    vkDestroyCommandPool(device, commandPool, nullptr);
+
     delete[] frameFences;
     delete[] renderFinishedSemaphores;
     delete[] imageAvailableSemaphores;
-
-    vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
 void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
