@@ -655,37 +655,6 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
-    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
-    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
-
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .surface               = createInfo.surface,
-        .minImageCount         = surfaceCapabilities->minImageCount,
-        .imageFormat           = surfaceFormat.format,
-        .imageColorSpace       = surfaceFormat.colorSpace,
-        .imageExtent           = surfaceCapabilities->currentExtent,
-        .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices   = nullptr,
-        .preTransform          = surfaceCapabilities->currentTransform,
-        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = createInfo.presentMode,
-        .clipped               = VK_TRUE,
-        .oldSwapchain          = oldSwapchain
-    };
-
-    VkSwapchainKHR swapchain;
-    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
-
-    return swapchain;
-}
-
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
@@ -701,6 +670,12 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     };
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    // Create the swapchain.
+    createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+
+    // Create the swapchain resources.
+    createSwapchainResources(device, createInfo);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         // Create the semaphores.
@@ -726,35 +701,29 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Get the device queues.
     vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
     vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
-
-    // Create the swapchain.
-    swapchain = createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
-
-    // Create the swapchain resources.
-    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
+    waitIdle(device.logical);
+
     // Destroy the old swapchain resources.
     destroySwapchainResources(device.logical);
 
+    // Store the old swapchain.
+    VkSwapchainKHR oldSwapchain = swapchain;
+
     // Create the new swapchain.
-    VkSwapchainKHR newSwapchain = createSwapchain(device.logical, createInfo, swapchain);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
-
-    // Store the new swapchain.
-    swapchain = newSwapchain;
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
 
     // Create the new swapchain resources.
     createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
-    destroySwapchainResources(device);
-
-    vkDestroySwapchainKHR(device, swapchain, nullptr);
+    waitIdle(device);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
@@ -762,6 +731,9 @@ void Renderer::destroy(VkDevice device) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
 
+    destroySwapchainResources(device);
+
+    vkDestroySwapchainKHR(device, swapchain, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
 
     delete[] frameFences;
@@ -869,6 +841,34 @@ bool Renderer::draw(VkDevice device) {
     frameIndex = (frameIndex + 1) % framesInFlight;
 
     return true;
+}
+
+void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .surface               = createInfo.surface,
+        .minImageCount         = surfaceCapabilities->minImageCount,
+        .imageFormat           = surfaceFormat.format,
+        .imageColorSpace       = surfaceFormat.colorSpace,
+        .imageExtent           = surfaceCapabilities->currentExtent,
+        .imageArrayLayers      = 1,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr,
+        .preTransform          = surfaceCapabilities->currentTransform,
+        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode           = createInfo.presentMode,
+        .clipped               = VK_TRUE,
+        .oldSwapchain          = oldSwapchain
+    };
+
+    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -1015,8 +1015,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
-    waitIdle(device);
-
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
