@@ -157,17 +157,15 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     VkPhysicalDevice* physicalDevices = new VkPhysicalDevice[physicalDeviceCount];
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices);
 
-    VkDeviceSize* deviceLocalHeapSizes = new VkDeviceSize[physicalDeviceCount]();
+    VkDeviceSize* deviceLocalHeapSizes = new VkDeviceSize[physicalDeviceCount];
 
     for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
         VkPhysicalDeviceProperties2 physicalDeviceProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
         vkGetPhysicalDeviceProperties2(physicalDevices[i], &physicalDeviceProperties);
 
-        if (physicalDeviceProperties.properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            continue;
-        }
+        VkPhysicalDeviceType deviceType = physicalDeviceProperties.properties.deviceType;
 
-        deviceLocalHeapSizes[i] = getMaxDeviceLocalHeapSize(physicalDevices[i]);
+        deviceLocalHeapSizes[i] = deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? getMaxDeviceLocalHeapSize(physicalDevices[i]) : 0;
     }
 
     uint32_t maxDeviceLocalHeapSizeIndex = getMaxDeviceLocalHeapSizeIndex(physicalDeviceCount, deviceLocalHeapSizes);
@@ -178,24 +176,29 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties2(physical, &queueFamilyPropertyCount, nullptr);
 
-    VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
+    VkQueueFamilyProperties2* queueFamilyProperties = new VkQueueFamilyProperties2[queueFamilyPropertyCount];
 
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        uint32_t queueCount = queueFamilyProperties[i].queueCount;
+        queueFamilyProperties[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+        queueFamilyProperties[i].pNext = nullptr;
+    }
 
-        if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 || queueCount < 2) {
-            continue;
-        }
+    vkGetPhysicalDeviceQueueFamilyProperties2(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
-        VkBool32 surfaceSupported;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
+    for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
+        VkQueueFlags queueFlags = queueFamilyProperties[i].queueFamilyProperties.queueFlags;
+        uint32_t queueCount = queueFamilyProperties[i].queueFamilyProperties.queueCount;
 
-        if (surfaceSupported) {
-            queueFamilyIndex = i;
-            break;
+        if (queueFlags & VK_QUEUE_GRAPHICS_BIT && queueCount >= 2) {
+            VkBool32 surfaceSupported;
+            vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
+
+            if (surfaceSupported) {
+                queueFamilyIndex = i;
+                break;
+            }
         }
     }
 
@@ -238,12 +241,12 @@ void Device::destroy() {
 }
 
 static uint32_t clamp(int val, uint32_t min, uint32_t max) {
-    if (val > max) {
-        return max;
-    }
-
     if (val < min) {
         return min;
+    }
+
+    if (val > max) {
+        return max;
     }
 
     return val;
@@ -331,18 +334,18 @@ VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
 }
 
 VkFormat Device::getDepthStencilFormat() {
-    VkFormat prefferedDepthStencilFormats[] = {
+    VkFormat prefferedFormats[] = {
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_D16_UNORM_S8_UINT
     };
 
-    for (VkFormat prefferedDepthStencilFormat : prefferedDepthStencilFormats) {
+    for (VkFormat prefferedFormat : prefferedFormats) {
         VkFormatProperties2 formatProperties = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        vkGetPhysicalDeviceFormatProperties2(physical, prefferedDepthStencilFormat, &formatProperties);
+        vkGetPhysicalDeviceFormatProperties2(physical, prefferedFormat, &formatProperties);
 
         if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return prefferedDepthStencilFormat;
+            return prefferedFormat;
         }
     }
 
@@ -463,9 +466,9 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
-static VkShaderModule createShaderModule(VkDevice device, const char* fileName) {
+static VkShaderModule createShaderModule(VkDevice device, const char* filePath) {
     FILE* file;
-    fopen_s(&file, fileName, "rb");
+    fopen_s(&file, filePath, "rb");
 
     fseek(file, 0L, SEEK_END);
     size_t codeSize = ftell(file);
