@@ -48,11 +48,13 @@ int main() {
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
+            renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
             renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
         }
     }
 
+    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);

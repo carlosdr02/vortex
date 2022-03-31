@@ -704,8 +704,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
-    waitIdle(device.logical);
-
     // Destroy the old swapchain resources.
     destroySwapchainResources(device.logical);
 
@@ -723,8 +721,6 @@ void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
 }
 
 void Renderer::destroy(VkDevice device) {
-    waitIdle(device);
-
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -742,8 +738,6 @@ void Renderer::destroy(VkDevice device) {
 }
 
 void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
-    waitIdle(device);
-
     vkResetCommandPool(device, commandPool, 0);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -841,6 +835,10 @@ bool Renderer::draw(VkDevice device) {
     frameIndex = (frameIndex + 1) % framesInFlight;
 
     return true;
+}
+
+void Renderer::waitIdle(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -1036,8 +1034,4 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     delete[] swapchainImageViews;
     delete[] depthImages;
     delete[] swapchainImages;
-}
-
-void Renderer::waitIdle(VkDevice device) {
-    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }

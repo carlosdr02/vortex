@@ -72,6 +72,8 @@ public:
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
     bool draw(VkDevice device);
 
+    void waitIdle(VkDevice device);
+
 private:
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
@@ -97,8 +99,6 @@ private:
 
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
-
-    void waitIdle(VkDevice device);
 };
 
 #endif // !GRAPHICS_H
