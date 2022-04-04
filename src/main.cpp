@@ -23,6 +23,9 @@ int main() {
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
+    VkQueue graphicsQueue = getDeviceQueue(device, 0);
+    VkQueue presentQueue = getDeviceQueue(device, 1);
+
     RendererCreateInfo rendererCreateInfo = {
         .surface             = window.surface,
         .surfaceCapabilities = &surfaceCapabilities,
@@ -30,7 +33,9 @@ int main() {
         .presentMode         = presentMode,
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
-        .framesInFlight      = 3
+        .framesInFlight      = 3,
+        .graphicsQueue       = graphicsQueue,
+        .presentQueue        = presentQueue
     };
 
     Renderer renderer(device, rendererCreateInfo);

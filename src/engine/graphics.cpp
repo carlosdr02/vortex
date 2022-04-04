@@ -466,6 +466,21 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
+VkQueue getDeviceQueue(Device& device, uint32_t queueIndex) {
+    VkDeviceQueueInfo2 deviceQueueInfo = {
+        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = device.queueFamilyIndex,
+        .queueIndex       = queueIndex
+    };
+
+    VkQueue queue;
+    vkGetDeviceQueue2(device.logical, &deviceQueueInfo, &queue);
+
+    return queue;
+}
+
 static VkShaderModule createShaderModule(VkDevice device, const char* filePath) {
     FILE* file;
     fopen_s(&file, filePath, "rb");
@@ -658,7 +673,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue), presentQueue(createInfo.presentQueue) {
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -700,10 +715,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
         vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
-
-    // Get the device queues.
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 0, &graphicsQueue);
-    vkGetDeviceQueue(device.logical, device.queueFamilyIndex, 1, &presentQueue);
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {

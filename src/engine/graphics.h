@@ -44,6 +44,8 @@ public:
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
 
+VkQueue getDeviceQueue(Device& device, uint32_t queueIndex);
+
 struct GraphicsPipelineCreateInfo {
     const char* vertexShaderPath;
     const char* fragmentShaderPath;
@@ -61,6 +63,8 @@ struct RendererCreateInfo {
     VkFormat depthFormat;
     VkRenderPass renderPass;
     uint32_t framesInFlight;
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
 };
 
 class Renderer {
