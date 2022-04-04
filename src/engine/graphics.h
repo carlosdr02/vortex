@@ -46,6 +46,17 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
 
 VkQueue getDeviceQueue(Device& device, uint32_t queueIndex);
 
+class Buffer {
+public:
+    VkDeviceMemory memory;
+
+    Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
+    void destroy(VkDevice device);
+
+private:
+    VkBuffer buffer;
+};
+
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
 
 struct GraphicsPipelineCreateInfo {
