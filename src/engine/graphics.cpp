@@ -670,6 +670,9 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     VkPipeline graphicsPipeline;
     vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &graphicsPipeline);
 
+    vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
+    vkDestroyShaderModule(device, vertexShaderModule, nullptr);
+
     return graphicsPipeline;
 }
 
