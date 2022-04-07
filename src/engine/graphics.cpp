@@ -481,9 +481,9 @@ VkQueue getDeviceQueue(Device& device, uint32_t queueIndex) {
     return queue;
 }
 
-static VkShaderModule createShaderModule(VkDevice device, const char* filePath) {
+static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath) {
     FILE* file;
-    fopen_s(&file, filePath, "rb");
+    fopen_s(&file, shaderPath, "rb");
 
     fseek(file, 0L, SEEK_END);
     size_t codeSize = ftell(file);
@@ -754,7 +754,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport) {
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent) {
     vkResetCommandPool(device, commandPool, 0);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -769,7 +769,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
 
         VkRect2D renderArea = {
             .offset = { 0, 0 },
-            .extent = viewport
+            .extent = extent
         };
 
         VkClearValue clearValues[] = {

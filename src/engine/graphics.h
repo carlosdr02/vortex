@@ -73,7 +73,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D viewport);
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
     bool draw(VkDevice device);
 
     void waitIdle(VkDevice device);
