@@ -46,6 +46,8 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
 
 VkQueue getDeviceQueue(Device& device, uint32_t queueIndex);
 
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
+
 struct GraphicsPipelineCreateInfo {
     const char* vertexShaderPath;
     const char* fragmentShaderPath;

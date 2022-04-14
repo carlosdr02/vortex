@@ -481,6 +481,23 @@ VkQueue getDeviceQueue(Device& device, uint32_t queueIndex) {
     return queue;
 }
 
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = nullptr,
+        .flags                  = 0,
+        .setLayoutCount         = descriptorSetLayoutCount,
+        .pSetLayouts            = descriptorSetLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr
+    };
+
+    VkPipelineLayout pipelineLayout;
+    vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+
+    return pipelineLayout;
+}
+
 static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath) {
     FILE* file;
     fopen_s(&file, shaderPath, "rb");
