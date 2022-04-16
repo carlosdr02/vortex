@@ -533,6 +533,10 @@ void Buffer::destroy(VkDevice device) {
     vkDestroyBuffer(device, buffer, nullptr);
 }
 
+Buffer::operator VkBuffer() {
+    return buffer;
+}
+
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
