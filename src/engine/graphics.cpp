@@ -481,6 +481,62 @@ VkQueue getDeviceQueue(Device& device, uint32_t queueIndex) {
     return queue;
 }
 
+Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
+    // Create the buffer.
+    VkBufferCreateInfo bufferCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .size                  = size,
+        .usage                 = usage,
+        .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr
+    };
+
+    vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
+
+    // Allocate device memory.
+    VkBufferMemoryRequirementsInfo2 bufferMemoryRequirementsInfo = {
+        .sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+        .pNext  = nullptr,
+        .buffer = buffer
+    };
+
+    VkMemoryRequirements2 memoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+    vkGetBufferMemoryRequirements2(device.logical, &bufferMemoryRequirementsInfo, &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryRequirements.memoryTypeBits, memoryProperties);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = memoryRequirements.memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &memory);
+
+    VkBindBufferMemoryInfo bindBufferMemoryInfo = {
+        .sType        = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
+        .pNext        = nullptr,
+        .buffer       = buffer,
+        .memory       = memory,
+        .memoryOffset = 0
+    };
+
+    vkBindBufferMemory2(device.logical, 1, &bindBufferMemoryInfo);
+}
+
+void Buffer::destroy(VkDevice device) {
+    vkFreeMemory(device, memory, nullptr);
+    vkDestroyBuffer(device, buffer, nullptr);
+}
+
+Buffer::operator VkBuffer() {
+    return buffer;
+}
+
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
