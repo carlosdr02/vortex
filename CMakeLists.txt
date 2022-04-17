@@ -29,6 +29,11 @@ ADD_SUBDIRECTORY(dependencies/glfw)
 
 TARGET_LINK_LIBRARIES(engine glfw)
 
+# GLM
+ADD_SUBDIRECTORY(dependencies/glm)
+
+TARGET_LINK_LIBRARIES(engine glm)
+
 # Executable
 ADD_EXECUTABLE(achantcraft src/main.cpp)
 
