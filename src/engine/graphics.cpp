@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include <glm/glm.hpp>
+
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
 #ifdef _DEBUG
@@ -643,14 +645,27 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         fragmentShaderStageCreateInfo
     };
 
+    VkVertexInputBindingDescription vertexInputBindingDescription = {
+        .binding   = 0,
+        .stride    = sizeof(glm::vec3),
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+    };
+
+    VkVertexInputAttributeDescription vertexInputAttributeDescription = {
+        .location = 0,
+        .binding  = 0,
+        .format   = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset   = 0
+    };
+
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
         .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext                           = nullptr,
         .flags                           = 0,
-        .vertexBindingDescriptionCount   = 0,
-        .pVertexBindingDescriptions      = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions    = nullptr
+        .vertexBindingDescriptionCount   = 1,
+        .pVertexBindingDescriptions      = &vertexInputBindingDescription,
+        .vertexAttributeDescriptionCount = 1,
+        .pVertexAttributeDescriptions    = &vertexInputAttributeDescription
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
