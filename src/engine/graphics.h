@@ -61,6 +61,8 @@ private:
 
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
 
+VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath, VkPipelineLayout pipelineLayout);
+
 struct GraphicsPipelineCreateInfo {
     const char* vertexShaderPath;
     const char* fragmentShaderPath;

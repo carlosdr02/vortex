@@ -583,6 +583,37 @@ static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath
     return shaderModule;
 }
 
+VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath, VkPipelineLayout pipelineLayout) {
+    VkShaderModule computeShaderModule = createShaderModule(device, computeShaderPath);
+
+    VkPipelineShaderStageCreateInfo computeShaderStageCreateInfo = {
+        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .pNext               = nullptr,
+        .flags               = 0,
+        .stage               = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module              = computeShaderModule,
+        .pName               = "main",
+        .pSpecializationInfo = nullptr
+    };
+
+    VkComputePipelineCreateInfo computePipelineCreateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .pNext              = nullptr,
+        .flags              = 0,
+        .stage              = computeShaderStageCreateInfo,
+        .layout             = pipelineLayout,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex  = -1
+    };
+
+    VkPipeline computePipeline;
+    vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &computePipeline);
+
+    vkDestroyShaderModule(device, computeShaderModule, nullptr);
+
+    return computePipeline;
+}
+
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo) {
     VkShaderModule vertexShaderModule = createShaderModule(device, createInfo.vertexShaderPath);
     VkShaderModule fragmentShaderModule = createShaderModule(device, createInfo.fragmentShaderPath);
