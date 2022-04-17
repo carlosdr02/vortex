@@ -578,9 +578,9 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .pNext         = nullptr,
         .flags         = 0,
-        .viewportCount = 0,
+        .viewportCount = 1,
         .pViewports    = nullptr,
-        .scissorCount  = 0,
+        .scissorCount  = 1,
         .pScissors     = nullptr
     };
 
