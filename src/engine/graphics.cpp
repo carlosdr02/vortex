@@ -466,10 +466,10 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .pNext           = nullptr,
         .srcSubpass      = VK_SUBPASS_EXTERNAL,
         .dstSubpass      = 0,
-        .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-        .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         .srcAccessMask   = 0,
-        .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
         .viewOffset      = 0
     };
