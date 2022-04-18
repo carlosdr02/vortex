@@ -2,6 +2,9 @@
 
 #include <stdio.h>
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
 #include <glm/glm.hpp>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
@@ -109,7 +112,15 @@ Window::Window(VkInstance instance, int width, int height, const char* title) {
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
     // Create the surface.
-    glfwCreateWindowSurface(instance, window, nullptr, &surface);
+    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
+        .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .pNext     = nullptr,
+        .flags     = 0,
+        .hinstance = GetModuleHandle(NULL),
+        .hwnd      = glfwGetWin32Window(window)
+    };
+
+    vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
 }
 
 void Window::destroy(VkInstance instance) {
