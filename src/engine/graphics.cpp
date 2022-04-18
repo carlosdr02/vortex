@@ -369,6 +369,21 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     return UINT32_MAX;
 }
 
+VkQueue Device::getQueue(uint32_t queueIndex) {
+    VkDeviceQueueInfo2 deviceQueueInfo = {
+        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = queueFamilyIndex,
+        .queueIndex       = queueIndex
+    };
+
+    VkQueue queue;
+    vkGetDeviceQueue2(logical, &deviceQueueInfo, &queue);
+
+    return queue;
+}
+
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat) {
     VkAttachmentDescription2 colorAttachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
@@ -466,21 +481,6 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
 
     return renderPass;
-}
-
-VkQueue getDeviceQueue(Device& device, uint32_t queueIndex) {
-    VkDeviceQueueInfo2 deviceQueueInfo = {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = device.queueFamilyIndex,
-        .queueIndex       = queueIndex
-    };
-
-    VkQueue queue;
-    vkGetDeviceQueue2(device.logical, &deviceQueueInfo, &queue);
-
-    return queue;
 }
 
 Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {

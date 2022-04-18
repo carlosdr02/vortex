@@ -40,11 +40,11 @@ public:
     VkFormat getDepthStencilFormat();
 
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
+
+    VkQueue getQueue(uint32_t queueIndex);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
-
-VkQueue getDeviceQueue(Device& device, uint32_t queueIndex);
 
 class Buffer {
 public:

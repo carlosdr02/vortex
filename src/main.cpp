@@ -23,8 +23,8 @@ int main() {
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
-    VkQueue graphicsQueue = getDeviceQueue(device, 0);
-    VkQueue presentQueue = getDeviceQueue(device, 1);
+    VkQueue graphicsQueue = device.getQueue(0);
+    VkQueue presentQueue = device.getQueue(1);
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = window.surface,
