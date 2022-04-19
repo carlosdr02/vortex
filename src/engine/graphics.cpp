@@ -222,7 +222,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         1.0f, 1.0f
     };
 
-    VkDeviceQueueCreateInfo queueCreateInfo = {
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .pNext            = nullptr,
         .flags            = 0,
@@ -238,7 +238,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pNext                   = nullptr,
         .flags                   = 0,
         .queueCreateInfoCount    = 1,
-        .pQueueCreateInfos       = &queueCreateInfo,
+        .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
         .enabledExtensionCount   = 1,
@@ -365,21 +365,6 @@ VkFormat Device::getDepthStencilFormat() {
     return VK_FORMAT_UNDEFINED;
 }
 
-uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
-    VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-    vkGetPhysicalDeviceMemoryProperties2(physical, &physicalDeviceMemoryProperties);
-
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryProperties.memoryTypeCount; ++i) {
-        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryProperties.memoryTypes[i];
-
-        if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
-            return i;
-        }
-    }
-
-    return UINT32_MAX;
-}
-
 VkQueue Device::getQueue(uint32_t queueIndex) {
     VkDeviceQueueInfo2 deviceQueueInfo = {
         .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
@@ -393,6 +378,21 @@ VkQueue Device::getQueue(uint32_t queueIndex) {
     vkGetDeviceQueue2(logical, &deviceQueueInfo, &queue);
 
     return queue;
+}
+
+uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
+    VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
+    vkGetPhysicalDeviceMemoryProperties2(physical, &physicalDeviceMemoryProperties);
+
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryProperties.memoryTypeCount; ++i) {
+        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryProperties.memoryTypes[i];
+
+        if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
+            return i;
+        }
+    }
+
+    return UINT32_MAX;
 }
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat) {
@@ -596,15 +596,15 @@ static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath
     return shaderModule;
 }
 
-VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath, VkPipelineLayout pipelineLayout) {
-    VkShaderModule computeShaderModule = createShaderModule(device, computeShaderPath);
+VkPipeline createComputePipeline(VkDevice device, const char* shaderPath, VkPipelineLayout pipelineLayout) {
+    VkShaderModule shaderModule = createShaderModule(device, shaderPath);
 
-    VkPipelineShaderStageCreateInfo computeShaderStageCreateInfo = {
+    VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
         .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .pNext               = nullptr,
         .flags               = 0,
         .stage               = VK_SHADER_STAGE_COMPUTE_BIT,
-        .module              = computeShaderModule,
+        .module              = shaderModule,
         .pName               = "main",
         .pSpecializationInfo = nullptr
     };
@@ -613,7 +613,7 @@ VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath,
         .sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .pNext              = nullptr,
         .flags              = 0,
-        .stage              = computeShaderStageCreateInfo,
+        .stage              = shaderStageCreateInfo,
         .layout             = pipelineLayout,
         .basePipelineHandle = VK_NULL_HANDLE,
         .basePipelineIndex  = -1
@@ -622,7 +622,7 @@ VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath,
     VkPipeline computePipeline;
     vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &computePipeline);
 
-    vkDestroyShaderModule(device, computeShaderModule, nullptr);
+    vkDestroyShaderModule(device, shaderModule, nullptr);
 
     return computePipeline;
 }

@@ -40,9 +40,9 @@ public:
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthStencilFormat();
 
-    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
-
     VkQueue getQueue(uint32_t queueIndex);
+
+    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
@@ -62,7 +62,7 @@ private:
 
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
 
-VkPipeline createComputePipeline(VkDevice device, const char* computeShaderPath, VkPipelineLayout pipelineLayout);
+VkPipeline createComputePipeline(VkDevice device, const char* shaderPath, VkPipelineLayout pipelineLayout);
 
 struct GraphicsPipelineCreateInfo {
     const char* vertexShaderPath;
