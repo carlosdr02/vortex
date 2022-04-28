@@ -87,6 +87,8 @@ struct RendererCreateInfo {
 
 class Renderer {
 public:
+    VkDescriptorSetLayout descriptorSetLayout;
+
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
@@ -105,6 +107,8 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSet;
     VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
     uint32_t framesInFlight;
