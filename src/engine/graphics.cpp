@@ -7,6 +7,8 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
+static constexpr VkDeviceSize CAMERA_DATA_SIZE = 128;
+
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     printf("Debug messenger: %s\n", pCallbackData->pMessage);
@@ -1175,7 +1177,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     }
 
     // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * createInfo.globalDataSize;
+    VkDeviceSize uniformBufferSize = swapchainImageCount * CAMERA_DATA_SIZE;
     uniformBuffer.create(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     // Map the uniform buffer memory.

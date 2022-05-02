@@ -82,7 +82,6 @@ struct RendererCreateInfo {
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
-    VkDeviceSize globalDataSize;
     uint32_t framesInFlight;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
