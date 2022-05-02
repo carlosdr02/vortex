@@ -1174,6 +1174,35 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 
+    // Create the uniform buffer.
+    VkDeviceSize uniformBufferSize = swapchainImageCount * createInfo.globalDataSize;
+    uniformBuffer.create(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    // Map the uniform buffer memory.
+    vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
+
+    // Update the descriptor set.
+    VkDescriptorBufferInfo descriptorBufferInfo = {
+        .buffer = uniformBuffer,
+        .offset = 0,
+        .range  = uniformBufferSize
+    };
+
+    VkWriteDescriptorSet writeDescriptorSet = {
+        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext            = nullptr,
+        .dstSet           = descriptorSet,
+        .dstBinding       = 0,
+        .dstArrayElement  = 0,
+        .descriptorCount  = 1,
+        .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .pImageInfo       = nullptr,
+        .pBufferInfo      = &descriptorBufferInfo,
+        .pTexelBufferView = nullptr
+    };
+
+    vkUpdateDescriptorSets(device.logical, 1, &writeDescriptorSet, 0, nullptr);
+
     // Allocate the command buffers.
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1188,6 +1217,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
 void Renderer::destroySwapchainResources(VkDevice device) {
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
+
+    uniformBuffer.destroy(device);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);

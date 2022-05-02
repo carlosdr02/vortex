@@ -82,6 +82,7 @@ struct RendererCreateInfo {
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
+    VkDeviceSize globalDataSize;
     uint32_t framesInFlight;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
@@ -111,6 +112,8 @@ private:
     VkFramebuffer* framebuffers;
     VkDescriptorPool descriptorPool;
     VkDescriptorSet descriptorSet;
+    Buffer uniformBuffer;
+    void* mappedUniformBufferMemory;
     VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
     uint32_t framesInFlight;
