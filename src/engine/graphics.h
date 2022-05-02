@@ -67,6 +67,8 @@ VkPipeline createComputePipeline(VkDevice device, const char* shaderPath, VkPipe
 struct GraphicsPipelineCreateInfo {
     const char* vertexShaderPath;
     const char* fragmentShaderPath;
+    const VkPipelineVertexInputStateCreateInfo* vertexInputStateCreateInfo;
+    VkPolygonMode polygonMode;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
 };

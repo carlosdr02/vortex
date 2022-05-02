@@ -654,16 +654,6 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         fragmentShaderStageCreateInfo
     };
 
-    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
-        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext                           = nullptr,
-        .flags                           = 0,
-        .vertexBindingDescriptionCount   = 0,
-        .pVertexBindingDescriptions      = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions    = nullptr
-    };
-
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .pNext                  = nullptr,
@@ -688,7 +678,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags                   = 0,
         .depthClampEnable        = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .polygonMode             = createInfo.polygonMode,
         .cullMode                = VK_CULL_MODE_NONE,
         .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable         = VK_FALSE,
@@ -766,7 +756,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags               = 0,
         .stageCount          = COUNT_OF(shaderStageCreateInfos),
         .pStages             = shaderStageCreateInfos,
-        .pVertexInputState   = &vertexInputStateCreateInfo,
+        .pVertexInputState   = createInfo.vertexInputStateCreateInfo,
         .pInputAssemblyState = &inputAssemblyStateCreateInfo,
         .pTessellationState  = nullptr,
         .pViewportState      = &viewportStateCreateInfo,
