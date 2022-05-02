@@ -492,7 +492,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
     return renderPass;
 }
 
-Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
+void Buffer::create(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
     // Create the buffer.
     VkBufferCreateInfo bufferCreateInfo = {
         .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,

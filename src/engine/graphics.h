@@ -51,7 +51,7 @@ class Buffer {
 public:
     VkDeviceMemory memory;
 
-    Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
+    void create(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
     void destroy(VkDevice device);
 
     operator VkBuffer();
