@@ -95,7 +95,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout);
     bool draw(VkDevice device, const void* cameraData);
 
     void waitIdle(VkDevice device);
