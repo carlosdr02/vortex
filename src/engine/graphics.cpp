@@ -1024,6 +1024,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     swapchainImageViews = new VkImageView[swapchainImageCount];
     depthImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
+    descriptorSets = new VkDescriptorSet[swapchainImageCount];
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
     imageFences = new VkFence[swapchainImageCount]();
 
@@ -1145,6 +1146,42 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSize = {
+        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = swapchainImageCount
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = swapchainImageCount,
+        .poolSizeCount = 1,
+        .pPoolSizes    = &descriptorPoolSize
+    };
+
+    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Allocate the descriptor sets.
+    VkDescriptorSetLayout* descriptorSetLayouts = new VkDescriptorSetLayout[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        descriptorSetLayouts[i] = descriptorSetLayout;
+    }
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = swapchainImageCount,
+        .pSetLayouts        = descriptorSetLayouts
+    };
+
+    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
+
+    delete[] descriptorSetLayouts;
+
     // Allocate the command buffers.
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1159,6 +1196,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
 void Renderer::destroySwapchainResources(VkDevice device) {
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
@@ -1174,6 +1212,7 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
     delete[] imageFences;
     delete[] commandBuffers;
+    delete[] descriptorSets;
     delete[] framebuffers;
     delete[] depthImageViews;
     delete[] swapchainImageViews;
