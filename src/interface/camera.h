@@ -3,6 +3,8 @@
 
 #include <glm/glm.hpp>
 
+#include <GLFW/glfw3.h>
+
 class Camera {
 public:
     glm::vec3 translation;
@@ -17,5 +19,7 @@ public:
     glm::mat4 getView() const;
     glm::mat4 getProjection() const;
 };
+
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 
 #endif // !CAMERA_H

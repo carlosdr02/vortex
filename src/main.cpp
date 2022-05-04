@@ -1,4 +1,5 @@
 #include <graphics.h>
+#include <camera.h>
 
 int main() {
     glfwInit();
@@ -12,7 +13,8 @@ int main() {
     VkDebugUtilsMessengerEXT debugMessenger = createDebugMessenger(instance);
 #endif // _DEBUG
 
-    Window window(instance, 1600, 900, applicationName);
+    int width = 1600, height = 900;
+    Window window(instance, width, height, applicationName);
 
     Device device(instance, window.surface);
 
@@ -41,12 +43,30 @@ int main() {
     Renderer renderer(device, rendererCreateInfo);
     renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
+    Camera camera = {
+        .translation = glm::vec3(0.0f, 0.0f, 1.0f),
+        .orientation = glm::vec3(0.0f, 0.0f, -1.0f),
+        .speed       = 0.01f,
+        .sensitivity = 0.1f,
+        .fov         = 65.0f,
+        .aspectRatio = width / (float)height,
+        .nearPlane   = 0.1f,
+        .farPlane    = 100.0f
+    };
+
+    glfwSetWindowUserPointer(window, &camera);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        if (!renderer.draw(device.logical, nullptr)) {
-            int width, height;
+        glm::mat4 cameraData[] = {
+            camera.getView(),
+            camera.getProjection()
+        };
 
+        if (!renderer.draw(device.logical, cameraData)) {
             do {
                 glfwGetFramebufferSize(window, &width, &height);
                 glfwWaitEvents();
@@ -57,6 +77,8 @@ int main() {
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
             renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
+
+            camera.aspectRatio = width / (float)height;
         }
     }
 
