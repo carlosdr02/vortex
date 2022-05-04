@@ -44,7 +44,7 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        if (!renderer.draw(device.logical)) {
+        if (!renderer.draw(device.logical, nullptr)) {
             int width, height;
 
             do {

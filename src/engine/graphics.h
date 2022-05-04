@@ -96,7 +96,7 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
-    bool draw(VkDevice device);
+    bool draw(VkDevice device, const void* cameraData);
 
     void waitIdle(VkDevice device);
 

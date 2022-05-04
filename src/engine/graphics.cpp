@@ -964,7 +964,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
     }
 }
 
-bool Renderer::draw(VkDevice device) {
+bool Renderer::draw(VkDevice device, const void* cameraData) {
     if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -991,6 +991,19 @@ bool Renderer::draw(VkDevice device) {
 
     vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &frameFences[frameIndex]);
+
+    VkDeviceSize offset = imageIndex * CAMERA_DATA_SIZE;
+    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, CAMERA_DATA_SIZE);
+
+    VkMappedMemoryRange mappedMemoryRange = {
+        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        .pNext  = nullptr,
+        .memory = uniformBuffer.memory,
+        .offset = offset,
+        .size   = CAMERA_DATA_SIZE
+    };
+
+    vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
 
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
 
