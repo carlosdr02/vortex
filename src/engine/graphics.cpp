@@ -7,7 +7,7 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static const VkDeviceSize CAMERA_DATA_SIZE = 2 * sizeof(float[4][4]);
+static const VkDeviceSize CAMERA_DATA_SIZE = 128;
 
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -1190,6 +1190,40 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
 
     delete[] descriptorSetLayouts;
+
+    // Update the descriptor sets.
+    VkDescriptorBufferInfo* descriptorBufferInfos = new VkDescriptorBufferInfo[swapchainImageCount];
+    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkDescriptorBufferInfo descriptorBufferInfo = {
+            .buffer = uniformBuffer,
+            .offset = i * CAMERA_DATA_SIZE,
+            .range  = CAMERA_DATA_SIZE
+        };
+
+        descriptorBufferInfos[i] = descriptorBufferInfo;
+
+        VkWriteDescriptorSet writeDescriptorSet = {
+            .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext            = nullptr,
+            .dstSet           = descriptorSets[i],
+            .dstBinding       = 0,
+            .dstArrayElement  = 0,
+            .descriptorCount  = 1,
+            .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pImageInfo       = nullptr,
+            .pBufferInfo      = &descriptorBufferInfos[i],
+            .pTexelBufferView = nullptr
+        };
+
+        writeDescriptorSets[i] = writeDescriptorSet;
+    }
+
+    vkUpdateDescriptorSets(device.logical, swapchainImageCount, writeDescriptorSets, 0, nullptr);
+
+    delete[] writeDescriptorSets;
+    delete[] descriptorBufferInfos;
 
     // Allocate the command buffers.
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
