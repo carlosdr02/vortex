@@ -109,10 +109,6 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
-    VkDescriptorPool descriptorPool;
-    VkDescriptorSet descriptorSet;
-    Buffer uniformBuffer;
-    void* mappedUniformBufferMemory;
     VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
     uint32_t framesInFlight;

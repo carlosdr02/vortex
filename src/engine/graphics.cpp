@@ -7,8 +7,6 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static constexpr VkDeviceSize CAMERA_DATA_SIZE = 128;
-
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     printf("Debug messenger: %s\n", pCallbackData->pMessage);
@@ -814,33 +812,16 @@ static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo&
     return swapchain;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), graphicsQueue(createInfo.graphicsQueue), presentQueue(createInfo.presentQueue) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue), presentQueue(createInfo.presentQueue) {
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
     frameFences = new VkFence[framesInFlight];
 
-    // Create the descriptor pool.
-    VkDescriptorPoolSize descriptorPoolSize = {
-        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .descriptorCount = 1
-    };
-
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext         = nullptr,
-        .flags         = 0,
-        .maxSets       = 1,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &descriptorPoolSize
-    };
-
-    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
-
     // Create the descriptor set layout.
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
         .binding            = 0,
-        .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount    = 1,
         .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
         .pImmutableSamplers = nullptr
@@ -855,17 +836,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     };
 
     vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
-
-    // Allocate the descriptor set.
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .descriptorPool     = descriptorPool,
-        .descriptorSetCount = 1,
-        .pSetLayouts        = &descriptorSetLayout
-    };
-
-    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, &descriptorSet);
 
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
@@ -934,7 +904,6 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     delete[] frameFences;
     delete[] renderFinishedSemaphores;
@@ -1176,35 +1145,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 
-    // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * CAMERA_DATA_SIZE;
-    uniformBuffer.create(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-    // Map the uniform buffer memory.
-    vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
-
-    // Update the descriptor set.
-    VkDescriptorBufferInfo descriptorBufferInfo = {
-        .buffer = uniformBuffer,
-        .offset = 0,
-        .range  = uniformBufferSize
-    };
-
-    VkWriteDescriptorSet writeDescriptorSet = {
-        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-        .pNext            = nullptr,
-        .dstSet           = descriptorSet,
-        .dstBinding       = 0,
-        .dstArrayElement  = 0,
-        .descriptorCount  = 1,
-        .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        .pImageInfo       = nullptr,
-        .pBufferInfo      = &descriptorBufferInfo,
-        .pTexelBufferView = nullptr
-    };
-
-    vkUpdateDescriptorSets(device.logical, 1, &writeDescriptorSet, 0, nullptr);
-
     // Allocate the command buffers.
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1219,8 +1159,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
 void Renderer::destroySwapchainResources(VkDevice device) {
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
-
-    uniformBuffer.destroy(device);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);

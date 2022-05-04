@@ -33,7 +33,6 @@ int main() {
         .presentMode         = presentMode,
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
-        .globalDataSize      = 128,
         .framesInFlight      = 3,
         .graphicsQueue       = graphicsQueue,
         .presentQueue        = presentQueue
