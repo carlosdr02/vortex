@@ -7,6 +7,8 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
+static const VkDeviceSize CAMERA_DATA_SIZE = 2 * sizeof(float[4][4]);
+
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     printf("Debug messenger: %s\n", pCallbackData->pMessage);
@@ -1146,6 +1148,13 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
     }
 
+    // Create the uniform buffer.
+    VkDeviceSize uniformBufferSize = swapchainImageCount * CAMERA_DATA_SIZE;
+    uniformBuffer.create(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    // Map the uniform buffer memory.
+    vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
+
     // Create the descriptor pool.
     VkDescriptorPoolSize descriptorPoolSize = {
         .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -1197,6 +1206,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 void Renderer::destroySwapchainResources(VkDevice device) {
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+    uniformBuffer.destroy(device);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);

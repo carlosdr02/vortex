@@ -109,6 +109,8 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    Buffer uniformBuffer;
+    void* mappedUniformBufferMemory;
     VkDescriptorPool descriptorPool;
     VkDescriptorSet* descriptorSets;
     VkCommandPool commandPool;
