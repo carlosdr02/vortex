@@ -41,6 +41,22 @@ static float clamp(float val, float min, float max) {
     return val;
 }
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+
+    switch (key) {
+        case GLFW_KEY_LEFT_SHIFT:
+            const float speedFactor = 1.75f;
+
+            switch (action) {
+                case GLFW_PRESS: camera->speed *= speedFactor; break;
+                case GLFW_RELEASE: camera->speed /= speedFactor; break;
+            }
+
+            break;
+    }
+}
+
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     static float xLast = xPos;
     static float yLast = yPos;

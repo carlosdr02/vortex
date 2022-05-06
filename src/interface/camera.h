@@ -26,6 +26,7 @@ private:
     glm::vec3 getFront() const;
 };
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 
 #endif // !CAMERA_H

@@ -81,6 +81,7 @@ int main() {
     };
 
     glfwSetWindowUserPointer(window, &camera);
+    glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
