@@ -93,3 +93,19 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
 
     camera->orientation = normalize(orientation);
 }
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+
+    switch (button) {
+        case GLFW_MOUSE_BUTTON_4:
+            const float zoomFactor = 0.1f;
+
+            switch (action) {
+                case GLFW_PRESS: camera->fov *= zoomFactor; break;
+                case GLFW_RELEASE: camera->fov /= zoomFactor; break;
+            }
+
+            break;
+    }
+}

@@ -83,7 +83,9 @@ int main() {
     glfwSetWindowUserPointer(window, &camera);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
     float lastFrame = 0.0f;
 
