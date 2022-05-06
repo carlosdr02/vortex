@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <graphics.h>
 #include <camera.h>
 
@@ -70,7 +72,7 @@ int main() {
     Camera camera = {
         .translation = glm::vec3(0.0f, 0.0f, 1.0f),
         .orientation = glm::vec3(0.0f, 0.0f, -1.0f),
-        .speed       = 0.01f,
+        .speed       = 1.0f,
         .sensitivity = 0.1f,
         .fov         = 65.0f,
         .aspectRatio = width / (float)height,
@@ -82,8 +84,16 @@ int main() {
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    float lastFrame = 0.0f;
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        float currentFrame = glfwGetTime();
+        float deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        camera.update(window, deltaTime);
 
         glm::mat4 cameraData[] = {
             camera.getView(),
@@ -104,6 +114,8 @@ int main() {
 
             camera.aspectRatio = width / (float)height;
         }
+
+        printf("Frame time: %f\n", deltaTime);
     }
 
     renderer.waitIdle(device.logical);

@@ -16,8 +16,14 @@ public:
     float nearPlane;
     float farPlane;
 
+    void update(GLFWwindow* window, float deltaTime);
+
     glm::mat4 getView() const;
     glm::mat4 getProjection() const;
+
+private:
+    glm::vec3 getRight() const;
+    glm::vec3 getFront() const;
 };
 
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);

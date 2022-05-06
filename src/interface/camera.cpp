@@ -4,12 +4,29 @@
 
 using namespace glm;
 
+void Camera::update(GLFWwindow* window, float deltaTime) {
+    if (glfwGetKey(window, GLFW_KEY_W)) translation += getFront() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_A)) translation -= getRight() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_S)) translation -= getFront() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_D)) translation += getRight() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_SPACE)) translation += vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) translation -= vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
+}
+
 mat4 Camera::getView() const {
     return lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f));
 }
 
 mat4 Camera::getProjection() const {
     return perspective(radians(fov), aspectRatio, nearPlane, farPlane);
+}
+
+vec3 Camera::getRight() const {
+    return normalize(cross(orientation, vec3(0.0f, 1.0f, 0.0f)));
+}
+
+vec3 Camera::getFront() const {
+    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRight()));
 }
 
 static float clamp(float val, float min, float max) {
