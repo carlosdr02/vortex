@@ -45,7 +45,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
 
     switch (key) {
-        case GLFW_KEY_LEFT_SHIFT:
+        case GLFW_KEY_LEFT_SHIFT: {
             const float speedFactor = 1.75f;
 
             switch (action) {
@@ -54,6 +54,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             }
 
             break;
+        }
     }
 }
 
@@ -98,7 +99,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
 
     switch (button) {
-        case GLFW_MOUSE_BUTTON_4:
+        case GLFW_MOUSE_BUTTON_4: {
             const float zoomFactor = 0.1f;
 
             switch (action) {
@@ -115,5 +116,6 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
             }
 
             break;
+        }
     }
 }

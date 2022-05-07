@@ -40,31 +40,7 @@ int main() {
     };
 
     Renderer renderer(device, rendererCreateInfo);
-
-    VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo = {
-        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .pNext                           = nullptr,
-        .flags                           = 0,
-        .vertexBindingDescriptionCount   = 0,
-        .pVertexBindingDescriptions      = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions    = nullptr
-    };
-
-    VkPipelineLayout pipelineLayout = createPipelineLayout(device.logical, 1, &renderer.descriptorSetLayout);
-
-    GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
-        .vertexShaderPath           = "../src/engine/shaders/vert.spv",
-        .fragmentShaderPath         = "../src/engine/shaders/frag.spv",
-        .vertexInputStateCreateInfo = &pipelineVertexInputStateCreateInfo,
-        .polygonMode                = VK_POLYGON_MODE_FILL,
-        .pipelineLayout             = pipelineLayout,
-        .renderPass                 = renderPass
-    };
-
-    VkPipeline graphicsPipeline = createGraphicsPipeline(device.logical, graphicsPipelineCreateInfo);
-
-    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, graphicsPipeline, pipelineLayout);
+    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     Camera camera = {
         .translation = glm::vec3(0.0f, 0.0f, 1.0f),
@@ -115,17 +91,13 @@ int main() {
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, graphicsPipeline, pipelineLayout);
+            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
             camera.aspectRatio = width / (float)height;
         }
     }
 
     renderer.waitIdle(device.logical);
-
-    vkDestroyPipeline(device.logical, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
-
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);

@@ -912,7 +912,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent, VkPipeline graphicsPipeline, VkPipelineLayout pipelineLayout) {
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent) {
     vkResetCommandPool(device, commandPool, 0);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -952,21 +952,6 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
         };
 
         vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
-        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-        VkViewport viewport = {
-            .x        = 0.0f,
-            .y        = (float)extent.height,
-            .width    = (float)extent.width,
-            .height   = -(float)extent.height,
-            .minDepth = 0.0f,
-            .maxDepth = 1.0f
-        };
-
-        vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
-        vkCmdSetScissor(commandBuffers[i], 0, 1, &renderArea);
-        vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 
         VkSubpassEndInfo subpassEndInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
@@ -984,11 +969,28 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
         return false;
     }
 
+    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+
+    VkDeviceSize offset = imageIndex * CAMERA_DATA_SIZE;
+    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, CAMERA_DATA_SIZE);
+
+    VkMappedMemoryRange mappedMemoryRange = {
+        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        .pNext  = nullptr,
+        .memory = uniformBuffer.memory,
+        .offset = offset,
+        .size   = CAMERA_DATA_SIZE
+    };
+
+    vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
+
     if (imageFences[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
     }
 
     imageFences[imageIndex] = frameFences[frameIndex];
+
+    vkResetFences(device, 1, &frameFences[frameIndex]);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -1003,22 +1005,6 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
         .signalSemaphoreCount = 1,
         .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
     };
-
-    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &frameFences[frameIndex]);
-
-    VkDeviceSize offset = imageIndex * CAMERA_DATA_SIZE;
-    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, CAMERA_DATA_SIZE);
-
-    VkMappedMemoryRange mappedMemoryRange = {
-        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        .pNext  = nullptr,
-        .memory = uniformBuffer.memory,
-        .offset = offset,
-        .size   = CAMERA_DATA_SIZE
-    };
-
-    vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
 
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
 
