@@ -102,8 +102,16 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
             const float zoomFactor = 0.1f;
 
             switch (action) {
-                case GLFW_PRESS: camera->fov *= zoomFactor; break;
-                case GLFW_RELEASE: camera->fov /= zoomFactor; break;
+                case GLFW_PRESS:
+                    camera->fov *= zoomFactor;
+                    camera->sensitivity *= zoomFactor;
+
+                    break;
+                case GLFW_RELEASE:
+                    camera->fov /= zoomFactor;
+                    camera->sensitivity /= zoomFactor;
+
+                    break;
             }
 
             break;

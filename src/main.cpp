@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include <graphics.h>
 #include <camera.h>
 
@@ -8,7 +6,6 @@ int main() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
     const char* applicationName = "Achantcraft";
-
     VkInstance instance = createInstance(applicationName, VK_MAKE_VERSION(1, 0, 0));
 
 #ifdef _DEBUG
@@ -81,11 +78,16 @@ int main() {
     };
 
     glfwSetWindowUserPointer(window, &camera);
+
     glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, cursorPosCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
+
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+    if (glfwRawMouseMotionSupported()) {
+        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    }
 
     float lastFrame = 0.0f;
 
@@ -105,8 +107,8 @@ int main() {
 
         if (!renderer.draw(device.logical, cameraData)) {
             do {
-                glfwGetFramebufferSize(window, &width, &height);
                 glfwWaitEvents();
+                glfwGetFramebufferSize(window, &width, &height);
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
@@ -117,8 +119,6 @@ int main() {
 
             camera.aspectRatio = width / (float)height;
         }
-
-        printf("Frame time: %f\n", deltaTime);
     }
 
     renderer.waitIdle(device.logical);
