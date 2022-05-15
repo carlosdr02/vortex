@@ -76,12 +76,9 @@ int main() {
 
         camera.update(window, deltaTime);
 
-        glm::mat4 cameraData[] = {
-            camera.getView(),
-            camera.getProjection()
-        };
+        glm::mat4 viewProjection = camera.getViewProjection();
 
-        if (!renderer.draw(device.logical, cameraData)) {
+        if (!renderer.draw(device.logical, &viewProjection)) {
             do {
                 glfwWaitEvents();
                 glfwGetFramebufferSize(window, &width, &height);

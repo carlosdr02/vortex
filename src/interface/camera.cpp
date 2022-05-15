@@ -13,12 +13,11 @@ void Camera::update(GLFWwindow* window, float deltaTime) {
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) translation -= vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
 }
 
-mat4 Camera::getView() const {
-    return lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f));
-}
+mat4 Camera::getViewProjection() const {
+    mat4 view = lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f));
+    mat4 projection = perspective(radians(fov), aspectRatio, nearPlane, farPlane);
 
-mat4 Camera::getProjection() const {
-    return perspective(radians(fov), aspectRatio, nearPlane, farPlane);
+    return projection * view;
 }
 
 vec3 Camera::getRight() const {

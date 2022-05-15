@@ -7,7 +7,7 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static const VkDeviceSize CAMERA_DATA_SIZE = 128;
+static const VkDeviceSize VIEW_PROJECTION_SIZE = sizeof(float[4][4]);
 
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -964,22 +964,22 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
     }
 }
 
-bool Renderer::draw(VkDevice device, const void* cameraData) {
+bool Renderer::draw(VkDevice device, const void* viewProjection) {
     if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
 
     vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
 
-    VkDeviceSize offset = imageIndex * CAMERA_DATA_SIZE;
-    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, CAMERA_DATA_SIZE);
+    VkDeviceSize offset = imageIndex * VIEW_PROJECTION_SIZE;
+    memcpy((char*)mappedUniformBufferMemory + offset, viewProjection, VIEW_PROJECTION_SIZE);
 
     VkMappedMemoryRange mappedMemoryRange = {
         .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
         .pNext  = nullptr,
         .memory = uniformBuffer.memory,
         .offset = offset,
-        .size   = CAMERA_DATA_SIZE
+        .size   = VIEW_PROJECTION_SIZE
     };
 
     vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
@@ -1163,7 +1163,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     }
 
     // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * CAMERA_DATA_SIZE;
+    VkDeviceSize uniformBufferSize = swapchainImageCount * VIEW_PROJECTION_SIZE;
     uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     // Map the uniform buffer memory.
@@ -1212,8 +1212,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkDescriptorBufferInfo descriptorBufferInfo = {
             .buffer = uniformBuffer,
-            .offset = i * CAMERA_DATA_SIZE,
-            .range  = CAMERA_DATA_SIZE
+            .offset = i * VIEW_PROJECTION_SIZE,
+            .range  = VIEW_PROJECTION_SIZE
         };
 
         descriptorBufferInfos[i] = descriptorBufferInfo;

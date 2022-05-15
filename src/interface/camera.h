@@ -18,8 +18,7 @@ public:
 
     void update(GLFWwindow* window, float deltaTime);
 
-    glm::mat4 getView() const;
-    glm::mat4 getProjection() const;
+    glm::mat4 getViewProjection() const;
 
 private:
     glm::vec3 getRight() const;
