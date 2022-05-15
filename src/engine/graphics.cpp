@@ -7,7 +7,7 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static const VkDeviceSize VIEW_PROJECTION_SIZE = sizeof(float[4][4]);
+static const VkDeviceSize SIZE_OF_MAT4 = sizeof(float[4][4]);
 
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -969,28 +969,17 @@ bool Renderer::draw(VkDevice device, const void* viewProjection) {
         return false;
     }
 
-    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
-
-    VkDeviceSize offset = imageIndex * VIEW_PROJECTION_SIZE;
-    memcpy((char*)mappedUniformBufferMemory + offset, viewProjection, VIEW_PROJECTION_SIZE);
-
-    VkMappedMemoryRange mappedMemoryRange = {
-        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-        .pNext  = nullptr,
-        .memory = uniformBuffer.memory,
-        .offset = offset,
-        .size   = VIEW_PROJECTION_SIZE
-    };
-
-    vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
-
     if (imageFences[imageIndex] != VK_NULL_HANDLE) {
         vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
     }
 
     imageFences[imageIndex] = frameFences[frameIndex];
 
+    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &frameFences[frameIndex]);
+
+    VkDeviceSize offset = imageIndex * SIZE_OF_MAT4;
+    memcpy((char*)mappedUniformBufferMemory + offset, viewProjection, SIZE_OF_MAT4);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -1163,8 +1152,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     }
 
     // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * VIEW_PROJECTION_SIZE;
-    uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    VkDeviceSize uniformBufferSize = swapchainImageCount * SIZE_OF_MAT4;
+    uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // Map the uniform buffer memory.
     vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
@@ -1212,8 +1201,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkDescriptorBufferInfo descriptorBufferInfo = {
             .buffer = uniformBuffer,
-            .offset = i * VIEW_PROJECTION_SIZE,
-            .range  = VIEW_PROJECTION_SIZE
+            .offset = i * SIZE_OF_MAT4,
+            .range  = SIZE_OF_MAT4
         };
 
         descriptorBufferInfos[i] = descriptorBufferInfo;
