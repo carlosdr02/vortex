@@ -38,7 +38,7 @@ public:
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
-    VkFormat getDepthStencilFormat();
+    VkFormat getDepthFormat();
 
     VkQueue getQueue(uint32_t queueIndex);
 
@@ -83,6 +83,7 @@ struct RendererCreateInfo {
     VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
+    VkDeviceSize cameraDataSize;
     uint32_t framesInFlight;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
@@ -97,7 +98,7 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
-    bool draw(VkDevice device, const void* viewProjection);
+    bool draw(VkDevice device, const void* cameraData);
 
     void waitIdle(VkDevice device);
 
@@ -110,6 +111,7 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkDeviceSize cameraDataSize;
     Buffer uniformBuffer;
     void* mappedUniformBufferMemory;
     VkDescriptorPool descriptorPool;

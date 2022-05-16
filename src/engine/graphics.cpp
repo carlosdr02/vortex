@@ -7,10 +7,9 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static const VkDeviceSize SIZE_OF_MAT4 = sizeof(float[4][4]);
-
 #ifdef _DEBUG
-static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     printf("Debug messenger: %s\n", pCallbackData->pMessage);
 
     return VK_FALSE;
@@ -90,7 +89,8 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
 
 #ifdef _DEBUG
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
-    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
 
@@ -101,7 +101,8 @@ VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
 }
 
 void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger) {
-    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT =
+        (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 
     vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 }
@@ -134,12 +135,14 @@ Window::operator GLFWwindow*() {
 }
 
 static VkDeviceSize getDeviceLocalMemorySize(VkPhysicalDevice physicalDevice) {
-    VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-    vkGetPhysicalDeviceMemoryProperties2(physicalDevice, &physicalDeviceMemoryProperties);
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
 
     VkDeviceSize deviceLocalMemorySize = 0;
 
-    for (const VkMemoryHeap& memoryHeap : physicalDeviceMemoryProperties.memoryProperties.memoryHeaps) {
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryHeapCount; ++i) {
+        const VkMemoryHeap& memoryHeap = physicalDeviceMemoryProperties.memoryHeaps[i];
+
         if (memoryHeap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
             deviceLocalMemorySize += memoryHeap.size;
         }
@@ -173,10 +176,10 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     VkDeviceSize* deviceLocalMemorySizes = new VkDeviceSize[physicalDeviceCount];
 
     for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
-        VkPhysicalDeviceProperties2 physicalDeviceProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-        vkGetPhysicalDeviceProperties2(physicalDevices[i], &physicalDeviceProperties);
+        VkPhysicalDeviceProperties physicalDeviceProperties;
+        vkGetPhysicalDeviceProperties(physicalDevices[i], &physicalDeviceProperties);
 
-        VkPhysicalDeviceType physicalDeviceType = physicalDeviceProperties.properties.deviceType;
+        VkPhysicalDeviceType physicalDeviceType = physicalDeviceProperties.deviceType;
 
         deviceLocalMemorySizes[i] = physicalDeviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? getDeviceLocalMemorySize(physicalDevices[i]) : 0;
     }
@@ -189,22 +192,13 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
-    vkGetPhysicalDeviceQueueFamilyProperties2(physical, &queueFamilyPropertyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
 
-    VkQueueFamilyProperties2* queueFamilyProperties = new VkQueueFamilyProperties2[queueFamilyPropertyCount];
-
-    for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        queueFamilyProperties[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
-        queueFamilyProperties[i].pNext = nullptr;
-    }
-
-    vkGetPhysicalDeviceQueueFamilyProperties2(physical, &queueFamilyPropertyCount, queueFamilyProperties);
+    VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        VkQueueFlags queueFlags = queueFamilyProperties[i].queueFamilyProperties.queueFlags;
-        uint32_t queueCount = queueFamilyProperties[i].queueFamilyProperties.queueCount;
-
-        if (queueFlags & VK_QUEUE_GRAPHICS_BIT && queueCount >= 2) {
+        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[i].queueCount >= 2) {
             VkBool32 surfaceSupported;
             vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
@@ -218,6 +212,12 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
+    VkPhysicalDeviceVulkan12Features physicalDeviceVulkan12Features = {
+        .sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext                       = nullptr,
+        .separateDepthStencilLayouts = VK_TRUE
+    };
+
     float queuePriorities[] = {
         1.0f, 1.0f
     };
@@ -235,7 +235,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext                   = nullptr,
+        .pNext                   = &physicalDeviceVulkan12Features,
         .flags                   = 0,
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
@@ -346,18 +346,17 @@ VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
     return presentMode;
 }
 
-VkFormat Device::getDepthStencilFormat() {
+VkFormat Device::getDepthFormat() {
     VkFormat prefferedFormats[] = {
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT,
-        VK_FORMAT_D16_UNORM_S8_UINT
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D16_UNORM
     };
 
     for (VkFormat prefferedFormat : prefferedFormats) {
-        VkFormatProperties2 formatProperties = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-        vkGetPhysicalDeviceFormatProperties2(physical, prefferedFormat, &formatProperties);
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(physical, prefferedFormat, &formatProperties);
 
-        if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+        if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
             return prefferedFormat;
         }
     }
@@ -381,11 +380,11 @@ VkQueue Device::getQueue(uint32_t queueIndex) {
 }
 
 uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
-    VkPhysicalDeviceMemoryProperties2 physicalDeviceMemoryProperties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
-    vkGetPhysicalDeviceMemoryProperties2(physical, &physicalDeviceMemoryProperties);
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physical, &physicalDeviceMemoryProperties);
 
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryProperties.memoryTypeCount; ++i) {
-        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryProperties.memoryTypes[i];
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i) {
+        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryTypes[i];
 
         if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
             return i;
@@ -421,7 +420,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
     };
 
     VkAttachmentDescription2 attachmentDescriptions[] = {
@@ -441,7 +440,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
         .pNext      = nullptr,
         .attachment = 1,
-        .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        .layout     = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
         .aspectMask = 0
     };
 
@@ -470,7 +469,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         .srcAccessMask   = 0,
         .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
+        .dependencyFlags = 0,
         .viewOffset      = 0
     };
 
@@ -510,21 +509,15 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
     vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
 
     // Allocate device memory.
-    VkBufferMemoryRequirementsInfo2 bufferMemoryRequirementsInfo = {
-        .sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-        .pNext  = nullptr,
-        .buffer = buffer
-    };
+    VkMemoryRequirements memoryRequirements;
+    vkGetBufferMemoryRequirements(device.logical, buffer, &memoryRequirements);
 
-    VkMemoryRequirements2 memoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-    vkGetBufferMemoryRequirements2(device.logical, &bufferMemoryRequirementsInfo, &memoryRequirements);
-
-    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryRequirements.memoryTypeBits, memoryProperties);
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, memoryProperties);
 
     VkMemoryAllocateInfo memoryAllocateInfo = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .pNext           = nullptr,
-        .allocationSize  = memoryRequirements.memoryRequirements.size,
+        .allocationSize  = memoryRequirements.size,
         .memoryTypeIndex = memoryTypeIndex
     };
 
@@ -814,7 +807,9 @@ static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo&
     return swapchain;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue), presentQueue(createInfo.presentQueue) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
+        : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue),
+        presentQueue(createInfo.presentQueue) {
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -964,7 +959,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
     }
 }
 
-bool Renderer::draw(VkDevice device, const void* viewProjection) {
+bool Renderer::draw(VkDevice device, const void* cameraData) {
     if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -978,8 +973,8 @@ bool Renderer::draw(VkDevice device, const void* viewProjection) {
     vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &frameFences[frameIndex]);
 
-    VkDeviceSize offset = imageIndex * SIZE_OF_MAT4;
-    memcpy((char*)mappedUniformBufferMemory + offset, viewProjection, SIZE_OF_MAT4);
+    VkDeviceSize offset = imageIndex * cameraDataSize;
+    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, cameraDataSize);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -1037,6 +1032,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
     // Create the depth images.
+    VkFormat depthFormat = createInfo.depthFormat;
     VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -1045,7 +1041,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .pNext                 = nullptr,
             .flags                 = 0,
             .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = createInfo.depthFormat,
+            .format                = depthFormat,
             .extent                = { extent.width, extent.height, 1 },
             .mipLevels             = 1,
             .arrayLayers           = 1,
@@ -1062,21 +1058,15 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     }
 
     // Allocate device memory.
-    VkImageMemoryRequirementsInfo2 imageMemoryRequirementsInfo = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-        .pNext = nullptr,
-        .image = depthImages[0]
-    };
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, depthImages[0], &memoryRequirements);
 
-    VkMemoryRequirements2 memoryRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-    vkGetImageMemoryRequirements2(device.logical, &imageMemoryRequirementsInfo, &memoryRequirements);
-
-    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     VkMemoryAllocateInfo memoryAllocateInfo = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
         .pNext           = nullptr,
-        .allocationSize  = swapchainImageCount * memoryRequirements.memoryRequirements.size,
+        .allocationSize  = swapchainImageCount * memoryRequirements.size,
         .memoryTypeIndex = memoryTypeIndex
     };
 
@@ -1090,7 +1080,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .pNext        = nullptr,
             .image        = depthImages[i],
             .memory       = depthImagesMemory,
-            .memoryOffset = i * memoryRequirements.memoryRequirements.size
+            .memoryOffset = i * memoryRequirements.size
         };
 
         bindImageMemoryInfos[i] = bindImageMemoryInfo;
@@ -1125,7 +1115,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
         // Create the depth image views.
         imageViewCreateInfo.image = depthImages[i];
-        imageViewCreateInfo.format = createInfo.depthFormat;
+        imageViewCreateInfo.format = depthFormat;
         imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
         vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &depthImageViews[i]);
@@ -1152,8 +1142,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     }
 
     // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * SIZE_OF_MAT4;
-    uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkDeviceSize uniformBufferSize = swapchainImageCount * cameraDataSize;
+    uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // Map the uniform buffer memory.
     vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
@@ -1201,8 +1192,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkDescriptorBufferInfo descriptorBufferInfo = {
             .buffer = uniformBuffer,
-            .offset = i * SIZE_OF_MAT4,
-            .range  = SIZE_OF_MAT4
+            .offset = i * cameraDataSize,
+            .range  = cameraDataSize
         };
 
         descriptorBufferInfos[i] = descriptorBufferInfo;

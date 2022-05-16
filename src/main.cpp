@@ -20,7 +20,7 @@ int main() {
     VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(window);
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window.surface);
     VkPresentModeKHR presentMode = device.getSurfacePresentMode(window.surface);
-    VkFormat depthFormat = device.getDepthStencilFormat();
+    VkFormat depthFormat = device.getDepthFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
@@ -34,6 +34,7 @@ int main() {
         .presentMode         = presentMode,
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
+        .cameraDataSize      = sizeof(glm::mat4),
         .framesInFlight      = 3,
         .graphicsQueue       = graphicsQueue,
         .presentQueue        = presentQueue
@@ -47,7 +48,7 @@ int main() {
         .orientation = glm::vec3(0.0f, 0.0f, -1.0f),
         .speed       = 1.0f,
         .sensitivity = 0.1f,
-        .fov         = 65.0f,
+        .fov         = 90.0f,
         .aspectRatio = width / (float)height,
         .nearPlane   = 0.1f,
         .farPlane    = 100.0f
@@ -75,7 +76,6 @@ int main() {
         lastFrame = currentFrame;
 
         camera.update(window, deltaTime);
-
         glm::mat4 viewProjection = camera.getViewProjection();
 
         if (!renderer.draw(device.logical, &viewProjection)) {
