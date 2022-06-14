@@ -2,6 +2,9 @@
 
 #include <stdio.h>
 
+#include <algorithm>
+#include <vector>
+
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
@@ -253,18 +256,6 @@ void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
 }
 
-static uint32_t clamp(int val, uint32_t min, uint32_t max) {
-    if (val < min) {
-        return min;
-    }
-
-    if (val > max) {
-        return max;
-    }
-
-    return val;
-}
-
 VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, window.surface, &surfaceCapabilities);
@@ -276,7 +267,7 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
     }
 
     uint32_t& minImageCount = surfaceCapabilities.minImageCount;
-    minImageCount = clamp(3, minImageCount, maxImageCount);
+    minImageCount = std::clamp(3u, minImageCount, maxImageCount);
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
@@ -287,8 +278,8 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
         VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
         VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
 
-        extent.width = clamp(width, minExtent.width, maxExtent.width);
-        extent.height = clamp(height, minExtent.height, maxExtent.height);
+        extent.width = std::clamp(static_cast<uint32_t>(width), minExtent.width, maxExtent.width);
+        extent.height = std::clamp(static_cast<uint32_t>(height), minExtent.height, maxExtent.height);
     }
 
     return surfaceCapabilities;
@@ -1167,23 +1158,17 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
 
     // Allocate the descriptor sets.
-    VkDescriptorSetLayout* descriptorSetLayouts = new VkDescriptorSetLayout[swapchainImageCount];
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        descriptorSetLayouts[i] = descriptorSetLayout;
-    }
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(swapchainImageCount, descriptorSetLayout);
 
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext              = nullptr,
         .descriptorPool     = descriptorPool,
         .descriptorSetCount = swapchainImageCount,
-        .pSetLayouts        = descriptorSetLayouts
+        .pSetLayouts        = descriptorSetLayouts.data()
     };
 
     vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
-
-    delete[] descriptorSetLayouts;
 
     // Update the descriptor sets.
     VkDescriptorBufferInfo* descriptorBufferInfos = new VkDescriptorBufferInfo[swapchainImageCount];
