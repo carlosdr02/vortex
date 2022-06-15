@@ -271,25 +271,23 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
 }
 
 VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
-    VkFormat prefferedFormats[] = {
+    VkFormat formats[] = {
         VK_FORMAT_R8G8B8A8_SRGB,
-        VK_FORMAT_B8G8R8A8_SRGB,
-        VK_FORMAT_R8G8B8A8_UNORM,
-        VK_FORMAT_B8G8R8A8_UNORM
+        VK_FORMAT_B8G8R8A8_SRGB
     };
 
     uint32_t surfaceFormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, nullptr);
-
+    
     VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
-    for (VkFormat prefferedFormat : prefferedFormats) {
-        for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
-            if (surfaceFormats[i].format == prefferedFormat) {
-                surfaceFormat = surfaceFormats[i];
+    for (uint32_t i = 0; i < COUNT_OF(formats); ++i) {
+        for (uint32_t j = 0; j < surfaceFormatCount; ++j) {
+            if (surfaceFormats[j].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && surfaceFormats[j].format == formats[i]) {
+                surfaceFormat = surfaceFormats[j];
                 goto exit;
             }
         }
@@ -302,38 +300,46 @@ exit:
 }
 
 VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
-    uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &presentModeCount, nullptr);
+    VkPresentModeKHR presentModes[] = {
+        VK_PRESENT_MODE_MAILBOX_KHR,
+        VK_PRESENT_MODE_FIFO_RELAXED_KHR
+    };
 
-    VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &presentModeCount, presentModes);
+    uint32_t surfacePresentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &surfacePresentModeCount, nullptr);
+
+    VkPresentModeKHR* surfacePresentModes = new VkPresentModeKHR[surfacePresentModeCount];
+    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &surfacePresentModeCount, surfacePresentModes);
 
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-    for (uint32_t i = 0; i < presentModeCount; ++i) {
-        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-            break;
+    for (uint32_t i = 0; i < COUNT_OF(presentModes); ++i) {
+        for (uint32_t j = 0; j < surfacePresentModeCount; ++j) {
+            if (surfacePresentModes[j] == presentModes[i]) {
+                presentMode = surfacePresentModes[j];
+                goto exit;
+            }
         }
     }
 
-    delete[] presentModes;
+exit:
+    delete[] surfacePresentModes;
 
     return presentMode;
 }
 
 VkFormat Device::getDepthFormat() {
-    VkFormat prefferedFormats[] = {
+    VkFormat formats[] = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D16_UNORM
     };
 
-    for (VkFormat prefferedFormat : prefferedFormats) {
-        VkFormatProperties formatProperties;
-        vkGetPhysicalDeviceFormatProperties(physical, prefferedFormat, &formatProperties);
+    for (VkFormat format : formats) {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(physical, format, &properties);
 
-        if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return prefferedFormat;
+        if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return format;
         }
     }
 
@@ -950,7 +956,7 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
     vkResetFences(device, 1, &frameFences[frameIndex]);
 
     VkDeviceSize offset = imageIndex * cameraDataSize;
-    memcpy((char*)mappedUniformBufferMemory + offset, cameraData, cameraDataSize);
+    memcpy(static_cast<char*>(mappedUniformBufferMemory) + offset, cameraData, cameraDataSize);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
