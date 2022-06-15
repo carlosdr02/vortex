@@ -137,61 +137,46 @@ Window::operator GLFWwindow*() {
     return window;
 }
 
-static VkDeviceSize getDeviceLocalMemorySize(VkPhysicalDevice physicalDevice) {
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
+static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
+    uint32_t physicalDeviceCount;
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
 
-    VkDeviceSize deviceLocalMemorySize = 0;
+    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
 
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryHeapCount; ++i) {
-        const VkMemoryHeap& memoryHeap = physicalDeviceMemoryProperties.memoryHeaps[i];
+    auto isNotDiscrete = [](VkPhysicalDevice physicalDevice) {
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-        if (memoryHeap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
-            deviceLocalMemorySize += memoryHeap.size;
-        }
-    }
+        return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    };
 
-    return deviceLocalMemorySize;
+    std::erase_if(physicalDevices, isNotDiscrete);
+
+    return physicalDevices;
 }
 
-static uint32_t getMaxDeviceSizeIndex(uint32_t deviceSizeCount, const VkDeviceSize* deviceSizes) {
-    VkDeviceSize maxDeviceSize = 0;
-    uint32_t maxDeviceSizeIndex = 0;
+static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice) {
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
 
-    for (uint32_t i = 0; i < deviceSizeCount; ++i) {
-        if (deviceSizes[i] > maxDeviceSize) {
-            maxDeviceSize = deviceSizes[i];
-            maxDeviceSizeIndex = i;
+    VkDeviceSize memorySize = 0;
+
+    for (uint32_t i = 0; i < memoryProperties.memoryHeapCount; ++i) {
+        const VkMemoryHeap& memoryHeap = memoryProperties.memoryHeaps[i];
+
+        if (memoryHeap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+            memorySize += memoryHeap.size;
         }
     }
 
-    return maxDeviceSizeIndex;
+    return memorySize;
 }
 
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     // Select a physical device.
-    uint32_t physicalDeviceCount;
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-
-    VkPhysicalDevice* physicalDevices = new VkPhysicalDevice[physicalDeviceCount];
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices);
-
-    VkDeviceSize* deviceLocalMemorySizes = new VkDeviceSize[physicalDeviceCount];
-
-    for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
-        VkPhysicalDeviceProperties physicalDeviceProperties;
-        vkGetPhysicalDeviceProperties(physicalDevices[i], &physicalDeviceProperties);
-
-        VkPhysicalDeviceType physicalDeviceType = physicalDeviceProperties.deviceType;
-
-        deviceLocalMemorySizes[i] = physicalDeviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? getDeviceLocalMemorySize(physicalDevices[i]) : 0;
-    }
-
-    uint32_t maxDeviceLocalMemorySizeIndex = getMaxDeviceSizeIndex(physicalDeviceCount, deviceLocalMemorySizes);
-    physical = physicalDevices[maxDeviceLocalMemorySizeIndex];
-
-    delete[] deviceLocalMemorySizes;
-    delete[] physicalDevices;
+    std::vector<VkPhysicalDevice> physicalDevices = getDiscretePhysicalDevices(instance);
+    physical = *std::ranges::max_element(physicalDevices, {}, getPhysicalDeviceMemorySize);
 
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
