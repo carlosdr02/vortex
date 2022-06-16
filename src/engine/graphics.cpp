@@ -200,12 +200,6 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
-    VkPhysicalDeviceVulkan12Features physicalDeviceVulkan12Features = {
-        .sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext                       = nullptr,
-        .separateDepthStencilLayouts = VK_TRUE
-    };
-
     float queuePriorities[] = {
         1.0f, 1.0f
     };
@@ -223,7 +217,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext                   = &physicalDeviceVulkan12Features,
+        .pNext                   = nullptr,
         .flags                   = 0,
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
@@ -402,7 +396,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
         .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     };
 
     VkAttachmentDescription2 attachmentDescriptions[] = {
@@ -422,7 +416,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
         .pNext      = nullptr,
         .attachment = 1,
-        .layout     = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .aspectMask = 0
     };
 
