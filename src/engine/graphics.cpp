@@ -5,10 +5,18 @@
 #include <algorithm>
 #include <vector>
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
+
+#define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
+
+static std::vector<const char*> getInstanceExtensions() {
+    uint32_t glfwExtensionCount;
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    return extensions;
+}
 
 #ifdef _DEBUG
 static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -31,6 +39,48 @@ static VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo() {
 
     return debugMessengerCreateInfo;
 }
+
+static bool isDebugExtensionAvailable() {
+    uint32_t extensionPropertyCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, nullptr);
+
+    VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, extensionProperties);
+
+    bool isExtensionAvailable = false;
+
+    for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
+        if (strcmp(extensionProperties[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+            isExtensionAvailable = true;
+            break;
+        }
+    }
+    
+    delete[] extensionProperties;
+
+    return isExtensionAvailable;
+}
+
+static bool isValidationLayerAvailable() {
+    uint32_t layerPropertyCount;
+    vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
+
+    VkLayerProperties* layerProperties = new VkLayerProperties[layerPropertyCount];
+    vkEnumerateInstanceLayerProperties(&layerPropertyCount, layerProperties);
+
+    bool isLayerAvailable = false;
+
+    for (uint32_t i = 0; i < layerPropertyCount; ++i) {
+        if (strcmp(layerProperties[i].layerName, VALIDATION_LAYER_NAME) == 0) {
+            isLayerAvailable = true;
+            break;
+        }
+    }
+    
+    delete[] layerProperties;
+
+    return isLayerAvailable;
+}
 #endif // _DEBUG
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion) {
@@ -44,34 +94,38 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
         .apiVersion         = VK_API_VERSION_1_2
     };
 
+    std::vector<const char*> extensions = getInstanceExtensions();
+
 #ifdef _DEBUG
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
-
-    const char* validationLayer = "VK_LAYER_KHRONOS_validation";
-
-    const char* extensions[] = {
-        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-    };
-
     VkInstanceCreateInfo instanceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pNext                   = &debugMessengerCreateInfo,
         .flags                   = 0,
-        .pApplicationInfo        = &applicationInfo,
-        .enabledLayerCount       = 1,
-        .ppEnabledLayerNames     = &validationLayer,
-        .enabledExtensionCount   = COUNT_OF(extensions),
-        .ppEnabledExtensionNames = extensions
+        .pApplicationInfo        = &applicationInfo
     };
+
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
+
+    if (isDebugExtensionAvailable()) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+        instanceCreateInfo.pNext = &debugMessengerCreateInfo;
+    } else {
+        instanceCreateInfo.pNext = nullptr;
+    }
+
+    const char* validationLayer = VALIDATION_LAYER_NAME;
+
+    if (isValidationLayerAvailable()) {
+        instanceCreateInfo.enabledLayerCount = 1;
+        instanceCreateInfo.ppEnabledLayerNames = &validationLayer;
+    } else {
+        instanceCreateInfo.enabledLayerCount = 0;
+        instanceCreateInfo.ppEnabledLayerNames = nullptr;
+    }
+
+    instanceCreateInfo.enabledExtensionCount = extensions.size();
+    instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 #else
-
-    const char* extensions[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-    };
-
     VkInstanceCreateInfo instanceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext                   = nullptr,
@@ -79,8 +133,8 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
         .pApplicationInfo        = &applicationInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = COUNT_OF(extensions),
-        .ppEnabledExtensionNames = extensions
+        .enabledExtensionCount   = extensions.size(),
+        .ppEnabledExtensionNames = extensions.data()
     };
 #endif // _DEBUG
 
@@ -119,15 +173,7 @@ Window::Window(VkInstance instance, int width, int height, const char* title) {
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
     // Create the surface.
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {
-        .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .pNext     = nullptr,
-        .flags     = 0,
-        .hinstance = GetModuleHandle(NULL),
-        .hwnd      = glfwGetWin32Window(window)
-    };
-
-    vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
+    glfwCreateWindowSurface(instance, window, nullptr, &surface);
 }
 
 void Window::destroy(VkInstance instance) {
