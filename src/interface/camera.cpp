@@ -1,5 +1,7 @@
 #include "camera.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace glm;
@@ -28,20 +30,8 @@ vec3 Camera::getFront() const {
     return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRight()));
 }
 
-static float clamp(float val, float min, float max) {
-    if (val < min) {
-        return min;
-    }
-
-    if (val > max) {
-        return max;
-    }
-
-    return val;
-}
-
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+    Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
 
     switch (key) {
         case GLFW_KEY_LEFT_SHIFT: {
@@ -70,7 +60,7 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     xLast = xPos;
     yLast = yPos;
 
-    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+    Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
 
     xOffset *= camera->sensitivity;
     yOffset *= camera->sensitivity;
@@ -78,7 +68,7 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     yaw += xOffset;
     pitch += yOffset;
 
-    pitch = clamp(pitch, -89.9f, 89.9f);
+    pitch = std::clamp(pitch, -89.9f, 89.9f);
 
     float rYaw = radians(yaw);
     float rPitch = radians(pitch);
@@ -95,7 +85,7 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+    Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
 
     switch (button) {
         case GLFW_MOUSE_BUTTON_4: {

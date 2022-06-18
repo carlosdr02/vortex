@@ -343,11 +343,6 @@ exit:
 }
 
 VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
-    VkPresentModeKHR presentModes[] = {
-        VK_PRESENT_MODE_MAILBOX_KHR,
-        VK_PRESENT_MODE_FIFO_RELAXED_KHR
-    };
-
     uint32_t surfacePresentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &surfacePresentModeCount, nullptr);
 
@@ -356,16 +351,13 @@ VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
 
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
-    for (uint32_t i = 0; i < COUNT_OF(presentModes); ++i) {
-        for (uint32_t j = 0; j < surfacePresentModeCount; ++j) {
-            if (surfacePresentModes[j] == presentModes[i]) {
-                presentMode = surfacePresentModes[j];
-                goto exit;
-            }
+    for (uint32_t i = 0; i < surfacePresentModeCount; ++i) {
+        if (surfacePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            presentMode = surfacePresentModes[i];
+            break;
         }
     }
 
-exit:
     delete[] surfacePresentModes;
 
     return presentMode;
