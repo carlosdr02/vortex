@@ -7,13 +7,15 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-#define VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
-
 static std::vector<const char*> getInstanceExtensions() {
     uint32_t glfwExtensionCount;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+#ifdef _DEBUG
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif // _DEBUG
 
     return extensions;
 }
@@ -39,48 +41,6 @@ static VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo() {
 
     return debugMessengerCreateInfo;
 }
-
-static bool isDebugExtensionAvailable() {
-    uint32_t extensionPropertyCount;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, nullptr);
-
-    VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionPropertyCount, extensionProperties);
-
-    bool isExtensionAvailable = false;
-
-    for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-        if (strcmp(extensionProperties[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
-            isExtensionAvailable = true;
-            break;
-        }
-    }
-    
-    delete[] extensionProperties;
-
-    return isExtensionAvailable;
-}
-
-static bool isValidationLayerAvailable() {
-    uint32_t layerPropertyCount;
-    vkEnumerateInstanceLayerProperties(&layerPropertyCount, nullptr);
-
-    VkLayerProperties* layerProperties = new VkLayerProperties[layerPropertyCount];
-    vkEnumerateInstanceLayerProperties(&layerPropertyCount, layerProperties);
-
-    bool isLayerAvailable = false;
-
-    for (uint32_t i = 0; i < layerPropertyCount; ++i) {
-        if (strcmp(layerProperties[i].layerName, VALIDATION_LAYER_NAME) == 0) {
-            isLayerAvailable = true;
-            break;
-        }
-    }
-    
-    delete[] layerProperties;
-
-    return isLayerAvailable;
-}
 #endif // _DEBUG
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion) {
@@ -97,34 +57,20 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
     std::vector<const char*> extensions = getInstanceExtensions();
 
 #ifdef _DEBUG
-    VkInstanceCreateInfo instanceCreateInfo = {
-        .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .flags                   = 0,
-        .pApplicationInfo        = &applicationInfo
-    };
-
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
 
-    if (isDebugExtensionAvailable()) {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    const char* validationLayer = "VK_LAYER_KHRONOS_validation";
 
-        instanceCreateInfo.pNext = &debugMessengerCreateInfo;
-    } else {
-        instanceCreateInfo.pNext = nullptr;
-    }
-
-    const char* validationLayer = VALIDATION_LAYER_NAME;
-
-    if (isValidationLayerAvailable()) {
-        instanceCreateInfo.enabledLayerCount = 1;
-        instanceCreateInfo.ppEnabledLayerNames = &validationLayer;
-    } else {
-        instanceCreateInfo.enabledLayerCount = 0;
-        instanceCreateInfo.ppEnabledLayerNames = nullptr;
-    }
-
-    instanceCreateInfo.enabledExtensionCount = extensions.size();
-    instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
+    VkInstanceCreateInfo instanceCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext                   = &debugMessengerCreateInfo,
+        .flags                   = 0,
+        .pApplicationInfo        = &applicationInfo,
+        .enabledLayerCount       = 1,
+        .ppEnabledLayerNames     = &validationLayer,
+        .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
+        .ppEnabledExtensionNames = extensions.data()
+    };
 #else
     VkInstanceCreateInfo instanceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -133,7 +79,7 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
         .pApplicationInfo        = &applicationInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = extensions.size(),
+        .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data()
     };
 #endif // _DEBUG
@@ -151,10 +97,7 @@ VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
 
     VkDebugUtilsMessengerEXT debugMessenger;
-
-    if (vkCreateDebugUtilsMessengerEXT != nullptr) {
-        vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger);
-    }
+    vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger);
 
     return debugMessenger;
 }
@@ -162,9 +105,7 @@ VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
 void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger) {
     auto vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
-    if (vkDestroyDebugUtilsMessengerEXT != nullptr) {
-        vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    }
+    vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 }
 #endif // _DEBUG
 
