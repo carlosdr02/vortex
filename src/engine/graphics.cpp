@@ -734,37 +734,6 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
-    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
-    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
-
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .surface               = createInfo.surface,
-        .minImageCount         = surfaceCapabilities->minImageCount,
-        .imageFormat           = surfaceFormat.format,
-        .imageColorSpace       = surfaceFormat.colorSpace,
-        .imageExtent           = surfaceCapabilities->currentExtent,
-        .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices   = nullptr,
-        .preTransform          = surfaceCapabilities->currentTransform,
-        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = createInfo.presentMode,
-        .clipped               = VK_TRUE,
-        .oldSwapchain          = oldSwapchain
-    };
-
-    VkSwapchainKHR swapchain;
-    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
-
-    return swapchain;
-}
-
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
         : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue),
         presentQueue(createInfo.presentQueue) {
@@ -803,7 +772,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
     // Create the swapchain.
-    swapchain = createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+    createSwapchain(device.logical, createInfo);
 
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -834,14 +803,14 @@ void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
     // Destroy the old swapchain resources.
     destroySwapchainResources(device.logical);
 
+    // Store the old swapchain.
+    VkSwapchainKHR oldSwapchain = swapchain;
+
     // Create the new swapchain.
-    VkSwapchainKHR newSwapchain = createSwapchain(device.logical, createInfo, swapchain);
+    createSwapchain(device.logical, createInfo);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
-
-    // Store the new swapchain.
-    swapchain = newSwapchain;
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
 
     // Create the new swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -970,6 +939,34 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
 
 void Renderer::waitIdle(VkDevice device) {
     vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
+}
+
+void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo) {
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .surface               = createInfo.surface,
+        .minImageCount         = surfaceCapabilities->minImageCount,
+        .imageFormat           = surfaceFormat.format,
+        .imageColorSpace       = surfaceFormat.colorSpace,
+        .imageExtent           = surfaceCapabilities->currentExtent,
+        .imageArrayLayers      = 1,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr,
+        .preTransform          = surfaceCapabilities->currentTransform,
+        .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode           = createInfo.presentMode,
+        .clipped               = VK_TRUE,
+        .oldSwapchain          = swapchain
+    };
+
+    vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
