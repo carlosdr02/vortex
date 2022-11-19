@@ -8,10 +8,6 @@ int main() {
     const char* applicationName = "Achantcraft";
     VkInstance instance = createInstance(applicationName, VK_MAKE_VERSION(1, 0, 0));
 
-#ifdef _DEBUG
-    VkDebugUtilsMessengerEXT debugMessenger = createDebugMessenger(instance);
-#endif // _DEBUG
-
     int width = 1600, height = 900;
     Window window(instance, width, height, applicationName);
 
@@ -76,7 +72,7 @@ int main() {
         lastFrame = currentFrame;
 
         camera.update(window, deltaTime);
-        glm::mat4 viewProjection = camera.getViewProjection();
+        glm::mat4 viewProjection = camera.getViewProjectionMatrix();
 
         if (!renderer.draw(device.logical, &viewProjection)) {
             do {
@@ -101,10 +97,6 @@ int main() {
 
     device.destroy();
     window.destroy(instance);
-
-#ifdef _DEBUG
-    destroyDebugMessenger(instance, debugMessenger);
-#endif // _DEBUG
 
     vkDestroyInstance(instance, nullptr);
 

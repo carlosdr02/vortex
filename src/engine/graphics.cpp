@@ -7,42 +7,6 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static std::vector<const char*> getInstanceExtensions() {
-    uint32_t glfwExtensionCount;
-    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-#ifdef _DEBUG
-    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif // _DEBUG
-
-    return extensions;
-}
-
-#ifdef _DEBUG
-static VkBool32 debugMessengerCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-    printf("Debug messenger: %s\n", pCallbackData->pMessage);
-
-    return VK_FALSE;
-}
-
-static VkDebugUtilsMessengerCreateInfoEXT getDebugMessengerCreateInfo() {
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-        .pNext           = nullptr,
-        .flags           = 0,
-        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-        .messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-        .pfnUserCallback = debugMessengerCallback,
-        .pUserData       = nullptr
-    };
-
-    return debugMessengerCreateInfo;
-}
-#endif // _DEBUG
-
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion) {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -54,24 +18,9 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
         .apiVersion         = VK_API_VERSION_1_2
     };
 
-    std::vector<const char*> extensions = getInstanceExtensions();
+    uint32_t extensionCount;
+    const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
 
-#ifdef _DEBUG
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
-
-    const char* validationLayer = "VK_LAYER_KHRONOS_validation";
-
-    VkInstanceCreateInfo instanceCreateInfo = {
-        .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pNext                   = &debugMessengerCreateInfo,
-        .flags                   = 0,
-        .pApplicationInfo        = &applicationInfo,
-        .enabledLayerCount       = 1,
-        .ppEnabledLayerNames     = &validationLayer,
-        .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
-        .ppEnabledExtensionNames = extensions.data()
-    };
-#else
     VkInstanceCreateInfo instanceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext                   = nullptr,
@@ -79,35 +28,15 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
         .pApplicationInfo        = &applicationInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = static_cast<uint32_t>(extensions.size()),
-        .ppEnabledExtensionNames = extensions.data()
+        .enabledExtensionCount   = extensionCount,
+        .ppEnabledExtensionNames = extensions
     };
-#endif // _DEBUG
 
     VkInstance instance;
     vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
 
     return instance;
 }
-
-#ifdef _DEBUG
-VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) {
-    auto vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
-
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = getDebugMessengerCreateInfo();
-
-    VkDebugUtilsMessengerEXT debugMessenger;
-    vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerCreateInfo, nullptr, &debugMessenger);
-
-    return debugMessenger;
-}
-
-void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger) {
-    auto vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-
-    vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-}
-#endif // _DEBUG
 
 Window::Window(VkInstance instance, int width, int height, const char* title) {
     // Create the window.

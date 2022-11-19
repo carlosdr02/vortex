@@ -7,27 +7,27 @@
 using namespace glm;
 
 void Camera::update(GLFWwindow* window, float deltaTime) {
-    if (glfwGetKey(window, GLFW_KEY_W)) translation += getFront() * speed * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_A)) translation -= getRight() * speed * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_S)) translation -= getFront() * speed * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_D)) translation += getRight() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W)) translation += getForwardVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_A)) translation -= getRightVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_S)) translation -= getForwardVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_D)) translation += getRightVector() * speed * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_SPACE)) translation += vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) translation -= vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
 }
 
-mat4 Camera::getViewProjection() const {
+mat4 Camera::getViewProjectionMatrix() const {
     mat4 view = lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f));
     mat4 projection = perspective(radians(fov), aspectRatio, nearPlane, farPlane);
 
     return projection * view;
 }
 
-vec3 Camera::getRight() const {
-    return normalize(cross(orientation, vec3(0.0f, 1.0f, 0.0f)));
+vec3 Camera::getRightVector() const {
+    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), orientation));
 }
 
-vec3 Camera::getFront() const {
-    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRight()));
+vec3 Camera::getForwardVector() const {
+    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRightVector()));
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -35,11 +35,11 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 
     switch (key) {
         case GLFW_KEY_LEFT_SHIFT: {
-            const float speedFactor = 1.75f;
+            const float sprintFactor = 1.30f;
 
             switch (action) {
-                case GLFW_PRESS: camera->speed *= speedFactor; break;
-                case GLFW_RELEASE: camera->speed /= speedFactor; break;
+                case GLFW_PRESS: camera->speed *= sprintFactor; break;
+                case GLFW_RELEASE: camera->speed /= sprintFactor; break;
             }
 
             break;

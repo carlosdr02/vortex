@@ -2,7 +2,6 @@
 #define CAMERA_H
 
 #include <glm/glm.hpp>
-
 #include <GLFW/glfw3.h>
 
 class Camera {
@@ -18,11 +17,11 @@ public:
 
     void update(GLFWwindow* window, float deltaTime);
 
-    glm::mat4 getViewProjection() const;
+    glm::mat4 getViewProjectionMatrix() const;
 
 private:
-    glm::vec3 getRight() const;
-    glm::vec3 getFront() const;
+    glm::vec3 getRightVector() const;
+    glm::vec3 getForwardVector() const;
 };
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

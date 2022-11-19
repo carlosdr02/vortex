@@ -6,11 +6,6 @@
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion);
 
-#ifdef _DEBUG
-VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance);
-void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger);
-#endif // _DEBUG
-
 class Window {
 public:
     VkSurfaceKHR surface;
