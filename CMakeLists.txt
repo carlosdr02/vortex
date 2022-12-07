@@ -37,6 +37,25 @@ ADD_SUBDIRECTORY(dependencies/glfw)
 TARGET_LINK_LIBRARIES(engine glfw)
 TARGET_LINK_LIBRARIES(interface glfw)
 
+# ImGui
+ADD_LIBRARY(imgui
+    dependencies/imgui/imgui.cpp
+    dependencies/imgui/imgui_demo.cpp
+    dependencies/imgui/imgui_draw.cpp
+    dependencies/imgui/imgui_tables.cpp
+    dependencies/imgui/imgui_widgets.cpp
+    dependencies/imgui/backends/imgui_impl_vulkan.cpp
+    dependencies/imgui/backends/imgui_impl_glfw.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
+    dependencies/imgui
+    dependencies/imgui/backends
+)
+
+TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(imgui glfw)
+
 # GLM
 ADD_SUBDIRECTORY(dependencies/glm)
 

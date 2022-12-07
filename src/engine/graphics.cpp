@@ -287,38 +287,11 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     };
 
-    VkAttachmentDescription2 depthAttachmentDescription = {
-        .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-        .pNext          = nullptr,
-        .flags          = 0,
-        .format         = depthFormat,
-        .samples        = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-    };
-
-    VkAttachmentDescription2 attachmentDescriptions[] = {
-        colorAttachmentDescription,
-        depthAttachmentDescription
-    };
-
     VkAttachmentReference2 colorAttachmentReference = {
         .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
         .pNext      = nullptr,
         .attachment = 0,
         .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .aspectMask = 0
-    };
-
-    VkAttachmentReference2 depthAttachmentReference = {
-        .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-        .pNext      = nullptr,
-        .attachment = 1,
-        .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
         .aspectMask = 0
     };
 
@@ -333,7 +306,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .colorAttachmentCount    = 1,
         .pColorAttachments       = &colorAttachmentReference,
         .pResolveAttachments     = nullptr,
-        .pDepthStencilAttachment = &depthAttachmentReference,
+        .pDepthStencilAttachment = nullptr,
         .preserveAttachmentCount = 0,
         .pPreserveAttachments    = nullptr
     };
@@ -355,8 +328,8 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat de
         .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
         .pNext                   = nullptr,
         .flags                   = 0,
-        .attachmentCount         = COUNT_OF(attachmentDescriptions),
-        .pAttachments            = attachmentDescriptions,
+        .attachmentCount         = 1,
+        .pAttachments            = &colorAttachmentDescription,
         .subpassCount            = 1,
         .pSubpasses              = &subpassDescription,
         .dependencyCount         = 1,
@@ -894,64 +867,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     swapchainImages = new VkImage[swapchainImageCount];
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
-    // Create the depth images.
-    depthImages = new VkImage[swapchainImageCount];
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageCreateInfo imageCreateInfo = {
-            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .pNext                 = nullptr,
-            .flags                 = 0,
-            .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = createInfo.depthFormat,
-            .extent                = { createInfo.surfaceCapabilities->currentExtent.width, createInfo.surfaceCapabilities->currentExtent.height, 1 },
-            .mipLevels             = 1,
-            .arrayLayers           = 1,
-            .samples               = VK_SAMPLE_COUNT_1_BIT,
-            .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices   = nullptr,
-            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
-        };
-
-        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &depthImages[i]);
-    }
-
-    // Allocate device memory.
-    VkMemoryRequirements memoryRequirements;
-    vkGetImageMemoryRequirements(device.logical, depthImages[0], &memoryRequirements);
-
-    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    VkMemoryAllocateInfo memoryAllocateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext           = nullptr,
-        .allocationSize  = swapchainImageCount * memoryRequirements.size,
-        .memoryTypeIndex = memoryTypeIndex
-    };
-
-    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &depthImagesMemory);
-
-    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkBindImageMemoryInfo bindImageMemoryInfo = {
-            .sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
-            .pNext        = nullptr,
-            .image        = depthImages[i],
-            .memory       = depthImagesMemory,
-            .memoryOffset = i * memoryRequirements.size
-        };
-
-        bindImageMemoryInfos[i] = bindImageMemoryInfo;
-    }
-
-    vkBindImageMemory2(device.logical, swapchainImageCount, bindImageMemoryInfos);
-
-    delete[] bindImageMemoryInfos;
-
     // Create the swapchain image views.
     swapchainImageViews = new VkImageView[swapchainImageCount];
 
@@ -978,48 +893,17 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &swapchainImageViews[i]);
     }
 
-    // Create the depth image views.
-    depthImageViews = new VkImageView[swapchainImageCount];
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageSubresourceRange imageSubresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
-
-        VkImageViewCreateInfo imageViewCreateInfo = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .image            = depthImages[i],
-            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = createInfo.depthFormat,
-            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = imageSubresourceRange
-        };
-
-        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &depthImageViews[i]);
-    }
-
     // Create the framebuffers.
     framebuffers = new VkFramebuffer[swapchainImageCount];
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageView attachments[] = {
-            swapchainImageViews[i],
-            depthImageViews[i]
-        };
-
         VkFramebufferCreateInfo framebufferCreateInfo = {
             .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext           = nullptr,
             .flags           = 0,
             .renderPass      = createInfo.renderPass,
-            .attachmentCount = COUNT_OF(attachments),
-            .pAttachments    = attachments,
+            .attachmentCount = 1,
+            .pAttachments    = &swapchainImageViews[i],
             .width           = createInfo.surfaceCapabilities->currentExtent.width,
             .height          = createInfo.surfaceCapabilities->currentExtent.height,
             .layers          = 1
@@ -1127,22 +1011,13 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-        vkDestroyImageView(device, depthImageViews[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
-    }
-
-    vkFreeMemory(device, depthImagesMemory, nullptr);
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        vkDestroyImage(device, depthImages[i], nullptr);
     }
 
     delete[] imageFences;
     delete[] descriptorSets;
     delete[] commandBuffers;
     delete[] framebuffers;
-    delete[] depthImageViews;
     delete[] swapchainImageViews;
-    delete[] depthImages;
     delete[] swapchainImages;
 }

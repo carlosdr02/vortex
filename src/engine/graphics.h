@@ -91,10 +91,7 @@ private:
     VkDescriptorSetLayout descriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
-    VkImage* depthImages;
-    VkDeviceMemory depthImagesMemory;
     VkImageView* swapchainImageViews;
-    VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
     VkCommandBuffer* commandBuffers;
     VkDeviceSize cameraDataSize;
