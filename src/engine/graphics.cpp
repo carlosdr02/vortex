@@ -7,6 +7,13 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
+static constexpr const char* deviceExtensions[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+};
+
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion) {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -53,6 +60,38 @@ static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance insta
     };
 
     std::erase_if(physicalDevices, isNotDiscrete);
+
+    auto doesNotSupportRequiredExtensions = [](VkPhysicalDevice physicalDevice) {
+        uint32_t extensionPropertyCount;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
+
+        VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
+
+        bool supportsRequiredExtensions = true;
+
+        for (auto requiredExtension : deviceExtensions) {
+            bool isExtensionAvailable = false;
+
+            for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
+                if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
+                    isExtensionAvailable = true;
+                    break;
+                }
+            }
+
+            if (!isExtensionAvailable) {
+                supportsRequiredExtensions = false;
+                break;
+            }
+        }
+
+        delete[] extensionProperties;
+
+        return !supportsRequiredExtensions;
+    };
+
+    std::erase_if(physicalDevices, doesNotSupportRequiredExtensions);
 
     return physicalDevices;
 }
