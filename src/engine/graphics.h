@@ -28,12 +28,11 @@ public:
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
-    VkFormat getDepthFormat();
 
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat);
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
 
 class Buffer {
 public:
@@ -68,7 +67,6 @@ struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
-    VkFormat depthFormat;
     VkRenderPass renderPass;
     VkDeviceSize cameraDataSize;
     uint32_t framesInFlight;

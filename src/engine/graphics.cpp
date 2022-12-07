@@ -239,24 +239,6 @@ exit:
     return surfaceFormat;
 }
 
-VkFormat Device::getDepthFormat() {
-    VkFormat formats[] = {
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D16_UNORM
-    };
-
-    for (VkFormat format : formats) {
-        VkFormatProperties properties;
-        vkGetPhysicalDeviceFormatProperties(physical, format, &properties);
-
-        if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-            return format;
-        }
-    }
-
-    return VK_FORMAT_UNDEFINED;
-}
-
 uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
     VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
     vkGetPhysicalDeviceMemoryProperties(physical, &physicalDeviceMemoryProperties);
@@ -272,7 +254,7 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     return UINT32_MAX;
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat, VkFormat depthFormat) {
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
     VkAttachmentDescription2 colorAttachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,

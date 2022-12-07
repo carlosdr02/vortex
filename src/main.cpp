@@ -19,15 +19,13 @@ int main() {
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(surface);
-    VkFormat depthFormat = device.getDepthFormat();
 
-    VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
+    VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format);
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
-        .depthFormat         = depthFormat,
         .renderPass          = renderPass,
         .cameraDataSize      = sizeof(glm::mat4),
         .framesInFlight      = 6
