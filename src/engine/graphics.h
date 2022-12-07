@@ -121,7 +121,7 @@ private:
     VkQueue graphicsQueue;
     VkQueue presentQueue;
 
-    void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo);
+    void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
 };

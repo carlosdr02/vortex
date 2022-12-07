@@ -701,7 +701,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
     // Create the swapchain.
-    createSwapchain(device.logical, createInfo);
+    createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -736,7 +736,7 @@ void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
     VkSwapchainKHR oldSwapchain = swapchain;
 
     // Create the new swapchain.
-    createSwapchain(device.logical, createInfo);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
     vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
@@ -870,7 +870,7 @@ void Renderer::waitIdle(VkDevice device) {
     vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }
 
-void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo) {
+void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
 
@@ -892,7 +892,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode           = createInfo.presentMode,
         .clipped               = VK_TRUE,
-        .oldSwapchain          = swapchain
+        .oldSwapchain          = oldSwapchain
     };
 
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
