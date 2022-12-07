@@ -28,7 +28,6 @@ public:
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
-    VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthFormat();
 
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
@@ -69,7 +68,6 @@ struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentMode;
     VkFormat depthFormat;
     VkRenderPass renderPass;
     VkDeviceSize cameraDataSize;

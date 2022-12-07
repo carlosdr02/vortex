@@ -194,26 +194,17 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GL
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &surfaceCapabilities);
 
-    uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
+    uint32_t maxImageCount = surfaceCapabilities.maxImageCount != 0 ? surfaceCapabilities.maxImageCount : UINT32_MAX;
+    surfaceCapabilities.minImageCount = std::clamp(6u, surfaceCapabilities.minImageCount, maxImageCount);
 
-    if (maxImageCount == 0) {
-        maxImageCount = UINT32_MAX;
-    }
-
-    uint32_t& minImageCount = surfaceCapabilities.minImageCount;
-    minImageCount = std::clamp(3u, minImageCount, maxImageCount);
-
-    VkExtent2D& extent = surfaceCapabilities.currentExtent;
-
-    if (extent.width == UINT32_MAX) {
+    if (surfaceCapabilities.currentExtent.width == UINT32_MAX) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
-        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
-
-        extent.width = std::clamp(static_cast<uint32_t>(width), minExtent.width, maxExtent.width);
-        extent.height = std::clamp(static_cast<uint32_t>(height), minExtent.height, maxExtent.height);
+        surfaceCapabilities.currentExtent = {
+            .width  = std::clamp(static_cast<uint32_t>(width), surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
+            .height = std::clamp(static_cast<uint32_t>(height), surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)
+        };
     }
 
     return surfaceCapabilities;
@@ -233,10 +224,10 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
-    for (uint32_t i = 0; i < COUNT_OF(formats); ++i) {
-        for (uint32_t j = 0; j < surfaceFormatCount; ++j) {
-            if (surfaceFormats[j].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR && surfaceFormats[j].format == formats[i]) {
-                surfaceFormat = surfaceFormats[j];
+    for (auto format : formats) {
+        for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
+            if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                surfaceFormat = surfaceFormats[i];
                 goto exit;
             }
         }
@@ -246,27 +237,6 @@ exit:
     delete[] surfaceFormats;
 
     return surfaceFormat;
-}
-
-VkPresentModeKHR Device::getSurfacePresentMode(VkSurfaceKHR surface) {
-    uint32_t surfacePresentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &surfacePresentModeCount, nullptr);
-
-    VkPresentModeKHR* surfacePresentModes = new VkPresentModeKHR[surfacePresentModeCount];
-    vkGetPhysicalDeviceSurfacePresentModesKHR(physical, surface, &surfacePresentModeCount, surfacePresentModes);
-
-    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-
-    for (uint32_t i = 0; i < surfacePresentModeCount; ++i) {
-        if (surfacePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-            presentMode = surfacePresentModes[i];
-            break;
-        }
-    }
-
-    delete[] surfacePresentModes;
-
-    return presentMode;
 }
 
 VkFormat Device::getDepthFormat() {
@@ -910,7 +880,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = createInfo.presentMode,
+        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };

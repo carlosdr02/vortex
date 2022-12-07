@@ -19,7 +19,6 @@ int main() {
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(surface);
-    VkPresentModeKHR presentMode = device.getSurfacePresentMode(surface);
     VkFormat depthFormat = device.getDepthFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
@@ -28,7 +27,6 @@ int main() {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
-        .presentMode         = presentMode,
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
         .cameraDataSize      = sizeof(glm::mat4),
