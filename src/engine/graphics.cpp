@@ -639,6 +639,61 @@ VkDescriptorPool createGuiDescriptorPool(VkDevice device) {
     return descriptorPool;
 }
 
+void createGuiFonts(Device& device) {
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = device.renderQueue.familyIndex
+    };
+
+    VkCommandPool commandPool;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 0,
+        .pWaitSemaphores      = nullptr,
+        .pWaitDstStageMask    = nullptr,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores    = nullptr
+    };
+
+    vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(device.renderQueue);
+
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    vkDestroyCommandPool(device.logical, commandPool, nullptr);
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
         : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the swapchain.
@@ -860,7 +915,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = createInfo.surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
+        .presentMode           = VK_PRESENT_MODE_IMMEDIATE_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };

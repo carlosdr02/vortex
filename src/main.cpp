@@ -49,6 +49,8 @@ int main() {
 
     ImGui_ImplVulkan_Init(&initInfo, renderPass);
 
+    createGuiFonts(device);
+
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
@@ -77,7 +79,7 @@ int main() {
     //glfwSetCursorPosCallback(window, cursorPosCallback);
     //glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (glfwRawMouseMotionSupported()) {
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -99,6 +101,8 @@ int main() {
         camera.update(window, deltaTime);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix();
 
+        ImGui::ShowDemoWindow();
+
         ImGui::Render();
         ImDrawData* drawData = ImGui::GetDrawData();
 
@@ -119,6 +123,10 @@ int main() {
 
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);

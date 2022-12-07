@@ -66,6 +66,8 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 
+void createGuiFonts(Device& device);
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
