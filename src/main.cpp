@@ -29,6 +29,10 @@ int main() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
     ImGui_ImplGlfw_InitForVulkan(window, true);
 
     ImGui_ImplVulkan_InitInfo initInfo = {
@@ -73,7 +77,7 @@ int main() {
         .farPlane    = 100.0f
     };
 
-    glfwSetWindowUserPointer(window, &camera);
+    //glfwSetWindowUserPointer(window, &camera);
 
     //glfwSetKeyCallback(window, keyCallback);
     //glfwSetCursorPosCallback(window, cursorPosCallback);
@@ -81,9 +85,9 @@ int main() {
 
     //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    if (glfwRawMouseMotionSupported()) {
-        glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    }
+    //if (glfwRawMouseMotionSupported()) {
+    //    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+    //}
 
     float lastFrame = 0.0f;
 
@@ -94,16 +98,20 @@ int main() {
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        camera.update(window, deltaTime);
+        glm::mat4 viewProjection = camera.getViewProjectionMatrix();
+
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        camera.update(window, deltaTime);
-        glm::mat4 viewProjection = camera.getViewProjectionMatrix();
-
         ImGui::ShowDemoWindow();
 
         ImGui::Render();
+
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+
         ImDrawData* drawData = ImGui::GetDrawData();
 
         if (!renderer.draw(device, &viewProjection, surfaceCapabilities.currentExtent, renderPass, drawData)) {
