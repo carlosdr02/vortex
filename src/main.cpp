@@ -1,3 +1,5 @@
+#include <imgui_impl_glfw.h>
+
 #include <graphics.h>
 #include <camera.h>
 
@@ -21,6 +23,31 @@ int main() {
     VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(surface);
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format);
+
+    VkDescriptorPool guiDescriptorPool = createGuiDescriptorPool(device.logical);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {
+        .Instance        = instance,
+        .PhysicalDevice  = device.physical,
+        .Device          = device.logical,
+        .QueueFamily     = device.renderQueue.familyIndex,
+        .Queue           = device.renderQueue,
+        .PipelineCache   = VK_NULL_HANDLE,
+        .DescriptorPool  = guiDescriptorPool,
+        .Subpass         = 0,
+        .MinImageCount   = surfaceCapabilities.minImageCount,
+        .ImageCount      = surfaceCapabilities.minImageCount,
+        .MSAASamples     = VK_SAMPLE_COUNT_1_BIT,
+        .Allocator       = nullptr,
+        .CheckVkResultFn = nullptr
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo, renderPass);
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
@@ -46,9 +73,9 @@ int main() {
 
     glfwSetWindowUserPointer(window, &camera);
 
-    glfwSetKeyCallback(window, keyCallback);
-    glfwSetCursorPosCallback(window, cursorPosCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    //glfwSetKeyCallback(window, keyCallback);
+    //glfwSetCursorPosCallback(window, cursorPosCallback);
+    //glfwSetMouseButtonCallback(window, mouseButtonCallback);
 
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -65,10 +92,17 @@ int main() {
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         camera.update(window, deltaTime);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix();
 
-        if (!renderer.draw(device, surfaceCapabilities.currentExtent, renderPass, &viewProjection)) {
+        ImGui::Render();
+        ImDrawData* drawData = ImGui::GetDrawData();
+
+        if (!renderer.draw(device, &viewProjection, surfaceCapabilities.currentExtent, renderPass, drawData)) {
             do {
                 glfwWaitEvents();
                 glfwGetFramebufferSize(window, &width, &height);
@@ -86,6 +120,7 @@ int main() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
+    vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
     device.destroy();

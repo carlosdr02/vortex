@@ -609,6 +609,36 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
+VkDescriptorPool createGuiDescriptorPool(VkDevice device) {
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = COUNT_OF(descriptorPoolSizes) * 1000,
+        .poolSizeCount = COUNT_OF(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
+    };
+
+    VkDescriptorPool descriptorPool;
+    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    return descriptorPool;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
         : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the swapchain.
@@ -710,7 +740,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-bool Renderer::draw(Device& device, VkExtent2D extent, VkRenderPass renderPass, const void* cameraData) {
+bool Renderer::draw(Device& device, const void* cameraData, VkExtent2D extent, VkRenderPass renderPass, ImDrawData* drawData) {
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -763,6 +793,8 @@ bool Renderer::draw(Device& device, VkExtent2D extent, VkRenderPass renderPass, 
     };
 
     vkCmdBeginRenderPass2(commandBuffers[imageIndex], &renderPassBeginInfo, &subpassBeginInfo);
+
+    ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[imageIndex]);
 
     VkSubpassEndInfo subpassEndInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,

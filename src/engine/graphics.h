@@ -3,6 +3,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <imgui_impl_vulkan.h>
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion);
 
@@ -63,6 +64,8 @@ struct GraphicsPipelineCreateInfo {
 
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
+VkDescriptorPool createGuiDescriptorPool(VkDevice device);
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
@@ -78,7 +81,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    bool draw(Device& device, VkExtent2D extent, VkRenderPass renderPass, const void* cameraData);
+    bool draw(Device& device, const void* cameraData, VkExtent2D extent, VkRenderPass renderPass, ImDrawData* drawData);
 
     void waitIdle(VkDevice device);
 

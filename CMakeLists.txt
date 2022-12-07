@@ -48,13 +48,15 @@ ADD_LIBRARY(imgui
     dependencies/imgui/backends/imgui_impl_glfw.cpp
 )
 
+TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(imgui glfw)
+
 TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
     dependencies/imgui
     dependencies/imgui/backends
 )
 
-TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
-TARGET_LINK_LIBRARIES(imgui glfw)
+TARGET_LINK_LIBRARIES(engine imgui)
 
 # GLM
 ADD_SUBDIRECTORY(dependencies/glm)
