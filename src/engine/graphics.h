@@ -80,8 +80,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
-    bool draw(Device& device, const void* cameraData);
+    bool draw(Device& device, VkExtent2D extent, VkRenderPass renderPass, const void* cameraData);
 
     void waitIdle(VkDevice device);
 

@@ -195,7 +195,7 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GL
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &surfaceCapabilities);
 
     uint32_t maxImageCount = surfaceCapabilities.maxImageCount != 0 ? surfaceCapabilities.maxImageCount : UINT32_MAX;
-    surfaceCapabilities.minImageCount = std::clamp(6u, surfaceCapabilities.minImageCount, maxImageCount);
+    surfaceCapabilities.minImageCount = std::clamp(3u, surfaceCapabilities.minImageCount, maxImageCount);
 
     if (surfaceCapabilities.currentExtent.width == UINT32_MAX) {
         int width, height;
@@ -636,7 +636,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext            = nullptr,
-        .flags            = 0,
+        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
         .queueFamilyIndex = device.renderQueue.familyIndex
     };
 
@@ -728,59 +728,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent) {
-    vkResetCommandPool(device, commandPool, 0);
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkCommandBufferBeginInfo commandBufferBeginInfo = {
-            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .pInheritanceInfo = nullptr
-        };
-
-        vkBeginCommandBuffer(commandBuffers[i], &commandBufferBeginInfo);
-
-        VkRect2D renderArea = {
-            .offset = { 0, 0 },
-            .extent = extent
-        };
-
-        VkClearValue clearValues[] = {
-            { 0.0f, 0.0f, 0.0f, 1.0f },
-            { 1.0f, 0 }
-        };
-
-        VkRenderPassBeginInfo renderPassBeginInfo = {
-            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-            .pNext           = nullptr,
-            .renderPass      = renderPass,
-            .framebuffer     = framebuffers[i],
-            .renderArea      = renderArea,
-            .clearValueCount = COUNT_OF(clearValues),
-            .pClearValues    = clearValues
-        };
-
-        VkSubpassBeginInfo subpassBeginInfo = {
-            .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-            .pNext    = nullptr,
-            .contents = VK_SUBPASS_CONTENTS_INLINE
-        };
-
-        vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
-
-        VkSubpassEndInfo subpassEndInfo = {
-            .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
-            .pNext = nullptr
-        };
-
-        vkCmdEndRenderPass2(commandBuffers[i], &subpassEndInfo);
-
-        vkEndCommandBuffer(commandBuffers[i]);
-    }
-}
-
-bool Renderer::draw(Device& device, const void* cameraData) {
+bool Renderer::draw(Device& device, VkExtent2D extent, VkRenderPass renderPass, const void* cameraData) {
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -796,6 +744,52 @@ bool Renderer::draw(Device& device, const void* cameraData) {
 
     VkDeviceSize offset = imageIndex * cameraDataSize;
     memcpy(static_cast<char*>(mappedUniformBufferMemory) + offset, cameraData, cameraDataSize);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffers[imageIndex], &commandBufferBeginInfo);
+
+    VkRect2D renderArea = {
+        .offset = { 0, 0 },
+        .extent = extent
+    };
+
+    VkClearValue clearValues[] = {
+        { 0.0f, 0.0f, 0.0f, 1.0f },
+        { 1.0f, 0 }
+    };
+
+    VkRenderPassBeginInfo renderPassBeginInfo = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext           = nullptr,
+        .renderPass      = renderPass,
+        .framebuffer     = framebuffers[imageIndex],
+        .renderArea      = renderArea,
+        .clearValueCount = COUNT_OF(clearValues),
+        .pClearValues    = clearValues
+    };
+
+    VkSubpassBeginInfo subpassBeginInfo = {
+        .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+        .pNext    = nullptr,
+        .contents = VK_SUBPASS_CONTENTS_INLINE
+    };
+
+    vkCmdBeginRenderPass2(commandBuffers[imageIndex], &renderPassBeginInfo, &subpassBeginInfo);
+
+    VkSubpassEndInfo subpassEndInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+        .pNext = nullptr
+    };
+
+    vkCmdEndRenderPass2(commandBuffers[imageIndex], &subpassEndInfo);
+
+    vkEndCommandBuffer(commandBuffers[imageIndex]);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 

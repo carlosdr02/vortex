@@ -30,11 +30,10 @@ int main() {
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
         .cameraDataSize      = sizeof(glm::mat4),
-        .framesInFlight      = 3
+        .framesInFlight      = 6
     };
 
     Renderer renderer(device, rendererCreateInfo);
-    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     Camera camera = {
         .translation = glm::vec3(0.0f, 0.0f, 1.0f),
@@ -71,7 +70,7 @@ int main() {
         camera.update(window, deltaTime);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix();
 
-        if (!renderer.draw(device, &viewProjection)) {
+        if (!renderer.draw(device, surfaceCapabilities.currentExtent, renderPass, &viewProjection)) {
             do {
                 glfwWaitEvents();
                 glfwGetFramebufferSize(window, &width, &height);
@@ -81,7 +80,6 @@ int main() {
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
             camera.aspectRatio = width / (float)height;
         }
