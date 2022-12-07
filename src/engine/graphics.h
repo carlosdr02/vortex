@@ -76,8 +76,6 @@ struct RendererCreateInfo {
 
 class Renderer {
 public:
-    VkDescriptorSetLayout descriptorSetLayout;
-
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
@@ -89,6 +87,8 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    VkCommandPool commandPool;
+    VkDescriptorSetLayout descriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImage* depthImages;
@@ -96,13 +96,12 @@ private:
     VkImageView* swapchainImageViews;
     VkImageView* depthImageViews;
     VkFramebuffer* framebuffers;
+    VkCommandBuffer* commandBuffers;
     VkDeviceSize cameraDataSize;
     Buffer uniformBuffer;
     void* mappedUniformBufferMemory;
     VkDescriptorPool descriptorPool;
     VkDescriptorSet* descriptorSets;
-    VkCommandPool commandPool;
-    VkCommandBuffer* commandBuffers;
     uint32_t framesInFlight;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
