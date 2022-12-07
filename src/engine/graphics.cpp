@@ -38,24 +38,6 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
     return instance;
 }
 
-Window::Window(VkInstance instance, int width, int height, const char* title) {
-    // Create the window.
-    window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-
-    // Create the surface.
-    glfwCreateWindowSurface(instance, window, nullptr, &surface);
-}
-
-void Window::destroy(VkInstance instance) {
-    vkDestroySurfaceKHR(instance, surface, nullptr);
-
-    glfwDestroyWindow(window);
-}
-
-Window::operator GLFWwindow*() {
-    return window;
-}
-
 static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
     uint32_t physicalDeviceCount;
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -154,9 +136,9 @@ void Device::destroy() {
     vkDestroyDevice(logical, nullptr);
 }
 
-VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(Window& window) {
+VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window) {
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, window.surface, &surfaceCapabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical, surface, &surfaceCapabilities);
 
     uint32_t maxImageCount = surfaceCapabilities.maxImageCount;
 

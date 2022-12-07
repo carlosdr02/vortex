@@ -6,19 +6,6 @@
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion);
 
-class Window {
-public:
-    VkSurfaceKHR surface;
-
-    Window(VkInstance instance, int width, int height, const char* title);
-    void destroy(VkInstance instance);
-
-    operator GLFWwindow*();
-
-private:
-    GLFWwindow* window;
-};
-
 class Device {
 public:
     VkPhysicalDevice physical;
@@ -28,7 +15,7 @@ public:
     Device(VkInstance instance, VkSurfaceKHR surface);
     void destroy();
 
-    VkSurfaceCapabilitiesKHR getSurfaceCapabilities(Window& window);
+    VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthFormat();

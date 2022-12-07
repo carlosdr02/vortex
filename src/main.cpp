@@ -3,19 +3,23 @@
 
 int main() {
     glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    const char* applicationName = "Achantcraft";
-    VkInstance instance = createInstance(applicationName, VK_MAKE_VERSION(1, 0, 0));
 
     int width = 1600, height = 900;
-    Window window(instance, width, height, applicationName);
+    const char* applicationName = "Achantcraft";
 
-    Device device(instance, window.surface);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* window = glfwCreateWindow(width, height, applicationName, nullptr, nullptr);
 
-    VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(window);
-    VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(window.surface);
-    VkPresentModeKHR presentMode = device.getSurfacePresentMode(window.surface);
+    VkInstance instance = createInstance(applicationName, VK_MAKE_VERSION(1, 0, 0));
+
+    VkSurfaceKHR surface;
+    glfwCreateWindowSurface(instance, window, nullptr, &surface);
+
+    Device device(instance, surface);
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
+    VkSurfaceFormatKHR surfaceFormat = device.getSurfaceFormat(surface);
+    VkPresentModeKHR presentMode = device.getSurfacePresentMode(surface);
     VkFormat depthFormat = device.getDepthFormat();
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
@@ -24,7 +28,7 @@ int main() {
     VkQueue presentQueue = device.getQueue(1);
 
     RendererCreateInfo rendererCreateInfo = {
-        .surface             = window.surface,
+        .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .presentMode         = presentMode,
@@ -80,7 +84,7 @@ int main() {
                 glfwGetFramebufferSize(window, &width, &height);
             } while(width == 0 || height == 0);
 
-            surfaceCapabilities = device.getSurfaceCapabilities(window);
+            surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
@@ -96,9 +100,11 @@ int main() {
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
     device.destroy();
-    window.destroy(instance);
 
+    vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
+
+    glfwDestroyWindow(window);
 
     glfwTerminate();
 }
