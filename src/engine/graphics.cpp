@@ -45,6 +45,14 @@ VkInstance createInstance(const char* applicationName, uint32_t applicationVersi
     return instance;
 }
 
+Queue::operator VkQueue() {
+    return queue;
+}
+
+VkQueue* Queue::operator&() {
+    return &queue;
+}
+
 static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
     uint32_t physicalDeviceCount;
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -126,12 +134,12 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[i].queueCount >= 2) {
+        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             VkBool32 surfaceSupported;
             vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
             if (surfaceSupported) {
-                queueFamilyIndex = i;
+                renderQueue.familyIndex = i;
                 break;
             }
         }
@@ -140,20 +148,16 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
-    float queuePriorities[] = {
-        1.0f, 1.0f
-    };
+    float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
         .pNext            = nullptr,
         .flags            = 0,
-        .queueFamilyIndex = queueFamilyIndex,
-        .queueCount       = COUNT_OF(queuePriorities),
-        .pQueuePriorities = queuePriorities
+        .queueFamilyIndex = renderQueue.familyIndex,
+        .queueCount       = 1,
+        .pQueuePriorities = &queuePriority
     };
-
-    const char* swapchainExtension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -163,12 +167,23 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = 1,
-        .ppEnabledExtensionNames = &swapchainExtension,
+        .enabledExtensionCount   = COUNT_OF(deviceExtensions),
+        .ppEnabledExtensionNames = deviceExtensions,
         .pEnabledFeatures        = nullptr
     };
 
     vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
+
+    // Get the device queue.
+    VkDeviceQueueInfo2 deviceQueueInfo = {
+        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = renderQueue.familyIndex,
+        .queueIndex       = 0
+    };
+
+    vkGetDeviceQueue2(logical, &deviceQueueInfo, &renderQueue);
 }
 
 void Device::destroy() {
@@ -270,21 +285,6 @@ VkFormat Device::getDepthFormat() {
     }
 
     return VK_FORMAT_UNDEFINED;
-}
-
-VkQueue Device::getQueue(uint32_t queueIndex) {
-    VkDeviceQueueInfo2 deviceQueueInfo = {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = queueFamilyIndex,
-        .queueIndex       = queueIndex
-    };
-
-    VkQueue queue;
-    vkGetDeviceQueue2(logical, &deviceQueueInfo, &queue);
-
-    return queue;
 }
 
 uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
@@ -685,8 +685,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 }
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
-        : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0), graphicsQueue(createInfo.graphicsQueue),
-        presentQueue(createInfo.presentQueue) {
+        : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Allocate host memory.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -716,7 +715,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext            = nullptr,
         .flags            = 0,
-        .queueFamilyIndex = device.queueFamilyIndex
+        .queueFamilyIndex = device.renderQueue.familyIndex
     };
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
@@ -836,19 +835,19 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
     }
 }
 
-bool Renderer::draw(VkDevice device, const void* cameraData) {
-    if (vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+bool Renderer::draw(Device& device, const void* cameraData) {
+    if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
 
     if (imageFences[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(device, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+        vkWaitForFences(device.logical, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
     }
 
     imageFences[imageIndex] = frameFences[frameIndex];
 
-    vkWaitForFences(device, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
-    vkResetFences(device, 1, &frameFences[frameIndex]);
+    vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device.logical, 1, &frameFences[frameIndex]);
 
     VkDeviceSize offset = imageIndex * cameraDataSize;
     memcpy(static_cast<char*>(mappedUniformBufferMemory) + offset, cameraData, cameraDataSize);
@@ -867,7 +866,7 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
         .pSignalSemaphores    = &renderFinishedSemaphores[frameIndex]
     };
 
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, frameFences[frameIndex]);
+    vkQueueSubmit(device.renderQueue, 1, &submitInfo, frameFences[frameIndex]);
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -880,7 +879,7 @@ bool Renderer::draw(VkDevice device, const void* cameraData) {
         .pResults           = nullptr
     };
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    vkQueuePresentKHR(device.renderQueue, &presentInfo);
 
     frameIndex = (frameIndex + 1) % framesInFlight;
 

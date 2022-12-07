@@ -24,9 +24,6 @@ int main() {
 
     VkRenderPass renderPass = createRenderPass(device.logical, surfaceFormat.format, depthFormat);
 
-    VkQueue graphicsQueue = device.getQueue(0);
-    VkQueue presentQueue = device.getQueue(1);
-
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
@@ -35,9 +32,7 @@ int main() {
         .depthFormat         = depthFormat,
         .renderPass          = renderPass,
         .cameraDataSize      = sizeof(glm::mat4),
-        .framesInFlight      = 3,
-        .graphicsQueue       = graphicsQueue,
-        .presentQueue        = presentQueue
+        .framesInFlight      = 3
     };
 
     Renderer renderer(device, rendererCreateInfo);
@@ -78,7 +73,7 @@ int main() {
         camera.update(window, deltaTime);
         glm::mat4 viewProjection = camera.getViewProjectionMatrix();
 
-        if (!renderer.draw(device.logical, &viewProjection)) {
+        if (!renderer.draw(device, &viewProjection)) {
             do {
                 glfwWaitEvents();
                 glfwGetFramebufferSize(window, &width, &height);

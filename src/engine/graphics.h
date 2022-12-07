@@ -6,10 +6,21 @@
 
 VkInstance createInstance(const char* applicationName, uint32_t applicationVersion);
 
+class Queue {
+public:
+    uint32_t familyIndex;
+
+    operator VkQueue();
+    VkQueue* operator&();
+
+private:
+    VkQueue queue;
+};
+
 class Device {
 public:
     VkPhysicalDevice physical;
-    uint32_t queueFamilyIndex;
+    Queue renderQueue;
     VkDevice logical;
 
     Device(VkInstance instance, VkSurfaceKHR surface);
@@ -19,8 +30,6 @@ public:
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
     VkPresentModeKHR getSurfacePresentMode(VkSurfaceKHR surface);
     VkFormat getDepthFormat();
-
-    VkQueue getQueue(uint32_t queueIndex);
 
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
@@ -65,8 +74,6 @@ struct RendererCreateInfo {
     VkRenderPass renderPass;
     VkDeviceSize cameraDataSize;
     uint32_t framesInFlight;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
 };
 
 class Renderer {
@@ -78,7 +85,7 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
-    bool draw(VkDevice device, const void* cameraData);
+    bool draw(Device& device, const void* cameraData);
 
     void waitIdle(VkDevice device);
 
@@ -105,8 +112,6 @@ private:
     VkFence* frameFences;
     uint32_t imageIndex;
     uint32_t frameIndex;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
