@@ -60,7 +60,7 @@ int main() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .renderPass          = renderPass,
-        .cameraDataSize      = sizeof(glm::mat4),
+        .cameraDataSize      = 2 * sizeof(glm::mat4),
         .framesInFlight      = 6
     };
 
@@ -77,18 +77,6 @@ int main() {
         .farPlane    = 100.0f
     };
 
-    //glfwSetWindowUserPointer(window, &camera);
-
-    //glfwSetKeyCallback(window, keyCallback);
-    //glfwSetCursorPosCallback(window, cursorPosCallback);
-    //glfwSetMouseButtonCallback(window, mouseButtonCallback);
-
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    //if (glfwRawMouseMotionSupported()) {
-    //    glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    //}
-
     float lastFrame = 0.0f;
 
     while (!glfwWindowShouldClose(window)) {
@@ -99,7 +87,11 @@ int main() {
         lastFrame = currentFrame;
 
         camera.update(window, deltaTime);
-        glm::mat4 viewProjection = camera.getViewProjectionMatrix();
+
+        glm::mat4 cameraMatrices[] = {
+            camera.getInverseViewMatrix(),
+            camera.getInverseProjectionMatrix()
+        };
 
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -114,7 +106,7 @@ int main() {
 
         ImDrawData* drawData = ImGui::GetDrawData();
 
-        if (!renderer.draw(device, &viewProjection, surfaceCapabilities.currentExtent, renderPass, drawData)) {
+        if (!renderer.draw(device, cameraMatrices, surfaceCapabilities.currentExtent, renderPass, drawData)) {
             do {
                 glfwWaitEvents();
                 glfwGetFramebufferSize(window, &width, &height);

@@ -17,7 +17,8 @@ public:
 
     void update(GLFWwindow* window, float deltaTime);
 
-    glm::mat4 getViewProjectionMatrix() const;
+    glm::mat4 getInverseViewMatrix() const;
+    glm::mat4 getInverseProjectionMatrix() const;
 
 private:
     glm::vec3 getRightVector() const;
