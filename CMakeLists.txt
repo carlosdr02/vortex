@@ -17,6 +17,7 @@ TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 # Interface
 ADD_LIBRARY(interface
     src/interface/camera.cpp
+    src/interface/gui.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(interface PUBLIC src/interface)
@@ -57,6 +58,7 @@ TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
 )
 
 TARGET_LINK_LIBRARIES(engine imgui)
+TARGET_LINK_LIBRARIES(interface imgui)
 
 # GLM
 ADD_SUBDIRECTORY(dependencies/glm)

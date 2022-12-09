@@ -1,16 +1,18 @@
-#include <imgui_impl_glfw.h>
-
 #include <graphics.h>
+#include <gui.h>
 #include <camera.h>
 
 int main() {
     glfwInit();
 
-    int width = 1600, height = 900;
     const char* applicationName = "Achantcraft";
 
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(width, height, applicationName, nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1600, 900, applicationName, nullptr, nullptr);
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
 
     VkInstance instance = createInstance(applicationName, VK_MAKE_VERSION(1, 0, 0));
 
@@ -26,12 +28,7 @@ int main() {
 
     VkDescriptorPool guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    initGui();
 
     ImGui_ImplGlfw_InitForVulkan(window, true);
 
@@ -93,18 +90,7 @@ int main() {
             camera.getInverseProjectionMatrix()
         };
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        ImGui::ShowDemoWindow();
-
-        ImGui::Render();
-
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-
-        ImDrawData* drawData = ImGui::GetDrawData();
+        ImDrawData* drawData = renderGui();
 
         if (!renderer.draw(device, cameraMatrices, surfaceCapabilities.currentExtent, renderPass, drawData)) {
             do {
@@ -124,9 +110,7 @@ int main() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
+    terminateGui();
 
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
