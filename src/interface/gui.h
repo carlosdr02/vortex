@@ -1,11 +1,24 @@
-#ifndef GUI_H
-#define GUI_H
+#pragma once
 
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 
-void initGui();
-ImDrawData* renderGui();
-void terminateGui();
+class ImGuiLayer {
+public:
+    ImGuiLayer();
+    void destroy();
 
-#endif // !GUI_H
+    ImDrawData* render();
+
+private:
+    bool projectPanel = true;
+    bool hierarchyPanel = true;
+    bool propertiesPanel = true;
+
+    void pollEvents();
+    void renderMainMenuBar();
+    void renderViewport();
+    void renderProjectPanel();
+    void renderHierarchyPanel();
+    void renderPropertiesPanel();
+};

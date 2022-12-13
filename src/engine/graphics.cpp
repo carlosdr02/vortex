@@ -7,19 +7,12 @@
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
 
-static constexpr const char* deviceExtensions[] = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
-};
-
-VkInstance createInstance(const char* applicationName, uint32_t applicationVersion) {
+VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext              = nullptr,
-        .pApplicationName   = applicationName,
-        .applicationVersion = applicationVersion,
+        .pApplicationName   = "Vortex",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName        = "Vortex",
         .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
         .apiVersion         = VK_API_VERSION_1_3
@@ -53,6 +46,17 @@ VkQueue* Queue::operator&() {
     return &queue;
 }
 
+static std::vector<const char*> getDeviceExtensions() {
+    std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+    };
+
+    return deviceExtensions;
+}
+
 static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
     uint32_t physicalDeviceCount;
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -70,33 +74,30 @@ static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance insta
     std::erase_if(physicalDevices, isNotDiscrete);
 
     auto doesNotSupportRequiredExtensions = [](VkPhysicalDevice physicalDevice) {
+        auto deviceExtensions = getDeviceExtensions();
+
         uint32_t extensionPropertyCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
 
-        VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
-
-        bool supportsRequiredExtensions = true;
+        std::vector<VkExtensionProperties> extensionProperties(extensionPropertyCount);
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties.data());
 
         for (auto requiredExtension : deviceExtensions) {
             bool isExtensionAvailable = false;
 
-            for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-                if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
+            for (const auto& availableExtension : extensionProperties) {
+                if (strcmp(requiredExtension, availableExtension.extensionName) == 0) {
                     isExtensionAvailable = true;
                     break;
                 }
             }
 
             if (!isExtensionAvailable) {
-                supportsRequiredExtensions = false;
-                break;
+                return true;
             }
         }
 
-        delete[] extensionProperties;
-
-        return !supportsRequiredExtensions;
+        return false;
     };
 
     std::erase_if(physicalDevices, doesNotSupportRequiredExtensions);
@@ -130,8 +131,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     uint32_t queueFamilyPropertyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
 
-    VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyPropertyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties.data());
 
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
         if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
@@ -145,8 +146,6 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         }
     }
 
-    delete[] queueFamilyProperties;
-
     // Create the device.
     float queuePriority = 1.0f;
 
@@ -159,6 +158,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
+    auto deviceExtensions = getDeviceExtensions();
+
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = nullptr,
@@ -167,8 +168,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = COUNT_OF(deviceExtensions),
-        .ppEnabledExtensionNames = deviceExtensions,
+        .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+        .ppEnabledExtensionNames = deviceExtensions.data(),
         .pEnabledFeatures        = nullptr
     };
 
@@ -219,39 +220,18 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
     uint32_t surfaceFormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, nullptr);
     
-    VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
-
-    VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats.data());
 
     for (auto format : formats) {
-        for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
-            if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                surfaceFormat = surfaceFormats[i];
-                goto exit;
+        for (auto surfaceFormat : surfaceFormats) {
+            if (format == surfaceFormat.format && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return surfaceFormat;
             }
         }
     }
 
-exit:
-    delete[] surfaceFormats;
-
-    return surfaceFormat;
-}
-
-uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
-    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(physical, &physicalDeviceMemoryProperties);
-
-    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i) {
-        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryTypes[i];
-
-        if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
-            return i;
-        }
-    }
-
-    return UINT32_MAX;
+    return surfaceFormats[0];
 }
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
@@ -324,289 +304,6 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
     vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
 
     return renderPass;
-}
-
-Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
-    // Create the buffer.
-    VkBufferCreateInfo bufferCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .size                  = size,
-        .usage                 = usage,
-        .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
-        .queueFamilyIndexCount = 0,
-        .pQueueFamilyIndices   = nullptr
-    };
-
-    vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
-
-    // Allocate device memory.
-    VkMemoryRequirements memoryRequirements;
-    vkGetBufferMemoryRequirements(device.logical, buffer, &memoryRequirements);
-
-    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, memoryProperties);
-
-    VkMemoryAllocateInfo memoryAllocateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext           = nullptr,
-        .allocationSize  = memoryRequirements.size,
-        .memoryTypeIndex = memoryTypeIndex
-    };
-
-    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &memory);
-
-    VkBindBufferMemoryInfo bindBufferMemoryInfo = {
-        .sType        = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-        .pNext        = nullptr,
-        .buffer       = buffer,
-        .memory       = memory,
-        .memoryOffset = 0
-    };
-
-    vkBindBufferMemory2(device.logical, 1, &bindBufferMemoryInfo);
-}
-
-void Buffer::destroy(VkDevice device) {
-    vkFreeMemory(device, memory, nullptr);
-    vkDestroyBuffer(device, buffer, nullptr);
-}
-
-Buffer::operator VkBuffer() {
-    return buffer;
-}
-
-VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
-        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext                  = nullptr,
-        .flags                  = 0,
-        .setLayoutCount         = descriptorSetLayoutCount,
-        .pSetLayouts            = descriptorSetLayouts,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges    = nullptr
-    };
-
-    VkPipelineLayout pipelineLayout;
-    vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-
-    return pipelineLayout;
-}
-
-static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath) {
-    FILE* file;
-    fopen_s(&file, shaderPath, "rb");
-
-    fseek(file, 0L, SEEK_END);
-    size_t codeSize = ftell(file);
-    fseek(file, 0L, SEEK_SET);
-
-    uint32_t* code = new uint32_t[codeSize];
-    fread(code, 1, codeSize, file);
-
-    fclose(file);
-
-    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
-        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .pNext    = nullptr,
-        .flags    = 0,
-        .codeSize = codeSize,
-        .pCode    = code
-    };
-
-    VkShaderModule shaderModule;
-    vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule);
-
-    delete[] code;
-
-    return shaderModule;
-}
-
-VkPipeline createComputePipeline(VkDevice device, const char* shaderPath, VkPipelineLayout pipelineLayout) {
-    VkShaderModule shaderModule = createShaderModule(device, shaderPath);
-
-    VkPipelineShaderStageCreateInfo shaderStageCreateInfo = {
-        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext               = nullptr,
-        .flags               = 0,
-        .stage               = VK_SHADER_STAGE_COMPUTE_BIT,
-        .module              = shaderModule,
-        .pName               = "main",
-        .pSpecializationInfo = nullptr
-    };
-
-    VkComputePipelineCreateInfo computePipelineCreateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-        .pNext              = nullptr,
-        .flags              = 0,
-        .stage              = shaderStageCreateInfo,
-        .layout             = pipelineLayout,
-        .basePipelineHandle = VK_NULL_HANDLE,
-        .basePipelineIndex  = -1
-    };
-
-    VkPipeline computePipeline;
-    vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &computePipeline);
-
-    vkDestroyShaderModule(device, shaderModule, nullptr);
-
-    return computePipeline;
-}
-
-VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo) {
-    VkShaderModule vertexShaderModule = createShaderModule(device, createInfo.vertexShaderPath);
-    VkShaderModule fragmentShaderModule = createShaderModule(device, createInfo.fragmentShaderPath);
-
-    VkPipelineShaderStageCreateInfo vertexShaderStageCreateInfo = {
-        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext               = nullptr,
-        .flags               = 0,
-        .stage               = VK_SHADER_STAGE_VERTEX_BIT,
-        .module              = vertexShaderModule,
-        .pName               = "main",
-        .pSpecializationInfo = nullptr
-    };
-
-    VkPipelineShaderStageCreateInfo fragmentShaderStageCreateInfo = {
-        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-        .pNext               = nullptr,
-        .flags               = 0,
-        .stage               = VK_SHADER_STAGE_FRAGMENT_BIT,
-        .module              = fragmentShaderModule,
-        .pName               = "main",
-        .pSpecializationInfo = nullptr
-    };
-
-    VkPipelineShaderStageCreateInfo shaderStageCreateInfos[] = {
-        vertexShaderStageCreateInfo,
-        fragmentShaderStageCreateInfo
-    };
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
-        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .pNext                  = nullptr,
-        .flags                  = 0,
-        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        .primitiveRestartEnable = VK_FALSE
-    };
-
-    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .pNext         = nullptr,
-        .flags         = 0,
-        .viewportCount = 1,
-        .pViewports    = nullptr,
-        .scissorCount  = 1,
-        .pScissors     = nullptr
-    };
-
-    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
-        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-        .pNext                   = nullptr,
-        .flags                   = 0,
-        .depthClampEnable        = VK_FALSE,
-        .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode             = createInfo.polygonMode,
-        .cullMode                = VK_CULL_MODE_NONE,
-        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        .depthBiasEnable         = VK_FALSE,
-        .depthBiasConstantFactor = 0.0f,
-        .depthBiasClamp          = 0.0f,
-        .depthBiasSlopeFactor    = 0.0f,
-        .lineWidth               = 1.0f
-    };
-
-    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
-        .sampleShadingEnable   = VK_FALSE,
-        .minSampleShading      = 0.0f,
-        .pSampleMask           = nullptr,
-        .alphaToCoverageEnable = VK_FALSE,
-        .alphaToOneEnable      = VK_FALSE
-    };
-
-    VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo = {
-        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .pNext                 = nullptr,
-        .flags                 = 0,
-        .depthTestEnable       = VK_TRUE,
-        .depthWriteEnable      = VK_TRUE,
-        .depthCompareOp        = VK_COMPARE_OP_LESS,
-        .depthBoundsTestEnable = VK_FALSE,
-        .stencilTestEnable     = VK_FALSE,
-        .front                 = { VK_STENCIL_OP_KEEP },
-        .back                  = { VK_STENCIL_OP_KEEP },
-        .minDepthBounds        = 0.0f,
-        .maxDepthBounds        = 1.0f
-    };
-
-    VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {
-        .blendEnable         = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp        = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-        .alphaBlendOp        = VK_BLEND_OP_ADD,
-        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
-    };
-
-    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .pNext           = nullptr,
-        .flags           = 0,
-        .logicOpEnable   = VK_FALSE,
-        .logicOp         = VK_LOGIC_OP_CLEAR,
-        .attachmentCount = 1,
-        .pAttachments    = &colorBlendAttachmentState,
-        .blendConstants  = { 0.0f }
-    };
-
-    VkDynamicState dynamicStates[] = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
-        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .pNext             = nullptr,
-        .flags             = 0,
-        .dynamicStateCount = COUNT_OF(dynamicStates),
-        .pDynamicStates    = dynamicStates
-    };
-
-    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
-        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .pNext               = nullptr,
-        .flags               = 0,
-        .stageCount          = COUNT_OF(shaderStageCreateInfos),
-        .pStages             = shaderStageCreateInfos,
-        .pVertexInputState   = createInfo.vertexInputStateCreateInfo,
-        .pInputAssemblyState = &inputAssemblyStateCreateInfo,
-        .pTessellationState  = nullptr,
-        .pViewportState      = &viewportStateCreateInfo,
-        .pRasterizationState = &rasterizationStateCreateInfo,
-        .pMultisampleState   = &multisampleStateCreateInfo,
-        .pDepthStencilState  = &depthStencilStateCreateInfo,
-        .pColorBlendState    = &colorBlendStateCreateInfo,
-        .pDynamicState       = &dynamicStateCreateInfo,
-        .layout              = createInfo.pipelineLayout,
-        .renderPass          = createInfo.renderPass,
-        .subpass             = 0,
-        .basePipelineHandle  = VK_NULL_HANDLE,
-        .basePipelineIndex   = -1
-    };
-
-    VkPipeline graphicsPipeline;
-    vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &graphicsPipeline);
-
-    vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
-    vkDestroyShaderModule(device, vertexShaderModule, nullptr);
-
-    return graphicsPipeline;
 }
 
 VkDescriptorPool createGuiDescriptorPool(VkDevice device) {
@@ -694,8 +391,7 @@ void createGuiFonts(Device& device) {
     vkDestroyCommandPool(device.logical, commandPool, nullptr);
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
-        : cameraDataSize(createInfo.cameraDataSize), framesInFlight(createInfo.framesInFlight), frameIndex(0) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), frameIndex(0) {
     // Create the swapchain.
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
@@ -708,25 +404,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     };
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
-
-    // Create the descriptor set layout.
-    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
-        .binding            = 0,
-        .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount    = 1,
-        .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
-        .pImmutableSamplers = nullptr
-    };
-
-    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext        = nullptr,
-        .flags        = 0,
-        .bindingCount = 1,
-        .pBindings    = &descriptorSetLayoutBinding
-    };
-
-    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
 
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
@@ -786,7 +463,6 @@ void Renderer::destroy(VkDevice device) {
 
     destroySwapchainResources(device);
 
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
@@ -795,7 +471,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-bool Renderer::draw(Device& device, const void* cameraData, VkExtent2D extent, VkRenderPass renderPass, ImDrawData* drawData) {
+bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImDrawData* drawData) {
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -808,9 +484,6 @@ bool Renderer::draw(Device& device, const void* cameraData, VkExtent2D extent, V
 
     vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logical, 1, &frameFences[frameIndex]);
-
-    VkDeviceSize offset = imageIndex * cameraDataSize;
-    memcpy(static_cast<char*>(mappedUniformBufferMemory) + offset, cameraData, cameraDataSize);
 
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -988,89 +661,12 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 
-    // Create the uniform buffer.
-    VkDeviceSize uniformBufferSize = swapchainImageCount * cameraDataSize;
-    uniformBuffer = Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    // Map the uniform buffer memory.
-    vkMapMemory(device.logical, uniformBuffer.memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
-
-    // Create the descriptor pool.
-    VkDescriptorPoolSize descriptorPoolSize = {
-        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = swapchainImageCount
-    };
-
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext         = nullptr,
-        .flags         = 0,
-        .maxSets       = swapchainImageCount,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &descriptorPoolSize
-    };
-
-    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
-
-    // Allocate the descriptor sets.
-    descriptorSets = new VkDescriptorSet[swapchainImageCount];
-
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(swapchainImageCount, descriptorSetLayout);
-
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .descriptorPool     = descriptorPool,
-        .descriptorSetCount = swapchainImageCount,
-        .pSetLayouts        = descriptorSetLayouts.data()
-    };
-
-    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
-
-    // Update the descriptor sets.
-    VkDescriptorBufferInfo* descriptorBufferInfos = new VkDescriptorBufferInfo[swapchainImageCount];
-    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[swapchainImageCount];
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkDescriptorBufferInfo descriptorBufferInfo = {
-            .buffer = uniformBuffer,
-            .offset = i * cameraDataSize,
-            .range  = cameraDataSize
-        };
-
-        descriptorBufferInfos[i] = descriptorBufferInfo;
-
-        VkWriteDescriptorSet writeDescriptorSet = {
-            .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext            = nullptr,
-            .dstSet           = descriptorSets[i],
-            .dstBinding       = 0,
-            .dstArrayElement  = 0,
-            .descriptorCount  = 1,
-            .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-            .pImageInfo       = nullptr,
-            .pBufferInfo      = &descriptorBufferInfos[i],
-            .pTexelBufferView = nullptr
-        };
-
-        writeDescriptorSets[i] = writeDescriptorSet;
-    }
-
-    vkUpdateDescriptorSets(device.logical, swapchainImageCount, writeDescriptorSets, 0, nullptr);
-
-    delete[] writeDescriptorSets;
-    delete[] descriptorBufferInfos;
-
-    // Allocate memory for the fences.
+    // Allocate memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
-    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
-
-    uniformBuffer.destroy(device);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
@@ -1078,7 +674,6 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     }
 
     delete[] imageFences;
-    delete[] descriptorSets;
     delete[] commandBuffers;
     delete[] framebuffers;
     delete[] swapchainImageViews;

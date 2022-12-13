@@ -1,12 +1,11 @@
 #include "gui.h"
 
+#include <imgui_impl_vulkan.h>
+#include <imgui_impl_glfw.h>
+
 using namespace ImGui;
 
-static bool projectPanel = true;
-static bool hierarchyPanel = true;
-static bool propertiesPanel = true;
-
-void initGui() {
+ImGuiLayer::ImGuiLayer() {
     IMGUI_CHECKVERSION();
     CreateContext();
 
@@ -15,11 +14,42 @@ void initGui() {
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 }
 
-static void processInput() {
+void ImGuiLayer::destroy() {
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    DestroyContext();
+}
+
+ImDrawData* ImGuiLayer::render() {
+    pollEvents();
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    NewFrame();
+
+    DockSpaceOverViewport();
+
+    renderMainMenuBar();
+    renderViewport();
+    if (projectPanel) renderProjectPanel();
+    if (hierarchyPanel) renderHierarchyPanel();
+    if (propertiesPanel) renderPropertiesPanel();
+
+    Render();
+
+    UpdatePlatformWindows();
+    RenderPlatformWindowsDefault();
+
+    auto drawData = GetDrawData();
+
+    return drawData;
+}
+
+void ImGuiLayer::pollEvents() {
     if (IsKeyPressed(ImGuiKey_Space)) projectPanel = !projectPanel;
 }
 
-static void renderMenuBar() {
+void ImGuiLayer::renderMainMenuBar() {
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
             MenuItem("New...", "Ctrl+N");
@@ -53,57 +83,26 @@ static void renderMenuBar() {
     }
 }
 
-static void renderViewport() {
+void ImGuiLayer::renderViewport() {
     SetNextWindowBgAlpha(1.0f);
     Begin("Viewport");
     End();
 }
 
-static void renderProjectPanel() {
+void ImGuiLayer::renderProjectPanel() {
     SetNextWindowBgAlpha(1.0f);
     Begin("Project", &projectPanel);
     End();
 }
 
-static void renderHierarchyPanel() {
+void ImGuiLayer::renderHierarchyPanel() {
     SetNextWindowBgAlpha(1.0f);
     Begin("Hierarchy", &hierarchyPanel);
     End();
 }
 
-static void renderPropertiesPanel() {
+void ImGuiLayer::renderPropertiesPanel() {
     SetNextWindowBgAlpha(1.0f);
     Begin("Properties", &propertiesPanel);
     End();
-}
-
-ImDrawData* renderGui() {
-    processInput();
-
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    NewFrame();
-
-    DockSpaceOverViewport();
-
-    renderMenuBar();
-    renderViewport();
-    if (projectPanel) renderProjectPanel();
-    if (hierarchyPanel) renderHierarchyPanel();
-    if (propertiesPanel) renderPropertiesPanel();
-
-    Render();
-
-    UpdatePlatformWindows();
-    RenderPlatformWindowsDefault();
-
-    ImDrawData* drawData = GetDrawData();
-
-    return drawData;
-}
-
-void terminateGui() {
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    DestroyContext();
 }

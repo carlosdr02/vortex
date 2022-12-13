@@ -5,7 +5,7 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 SET(CMAKE_CXX_STANDARD 20)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-PROJECT(Achantcraft VERSION 1.0.0)
+PROJECT(Vortex VERSION 1.0.0)
 
 # Engine
 ADD_LIBRARY(engine
@@ -14,9 +14,15 @@ ADD_LIBRARY(engine
 
 TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 
+# Application
+ADD_LIBRARY(application
+    src/application/application.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(application PUBLIC src/application)
+
 # Interface
 ADD_LIBRARY(interface
-    src/interface/camera.cpp
     src/interface/gui.cpp
 )
 
@@ -49,9 +55,9 @@ ADD_LIBRARY(imgui
     dependencies/imgui/backends/imgui_impl_glfw.cpp
 )
 
-TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(imgui glfw)
 
+TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
 TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
     dependencies/imgui
     dependencies/imgui/backends
@@ -60,13 +66,10 @@ TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
 TARGET_LINK_LIBRARIES(engine imgui)
 TARGET_LINK_LIBRARIES(interface imgui)
 
-# GLM
-ADD_SUBDIRECTORY(dependencies/glm)
-
-TARGET_LINK_LIBRARIES(interface glm)
-
 # Executable
-ADD_EXECUTABLE(achantcraft src/main.cpp)
+ADD_EXECUTABLE(vortex src/main.cpp)
 
-TARGET_LINK_LIBRARIES(achantcraft engine)
-TARGET_LINK_LIBRARIES(achantcraft interface)
+TARGET_LINK_LIBRARIES(application engine)
+TARGET_LINK_LIBRARIES(application interface)
+
+TARGET_LINK_LIBRARIES(vortex application)

@@ -1,11 +1,10 @@
-#ifndef GRAPHICS_H
-#define GRAPHICS_H
+#pragma once
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <imgui_impl_vulkan.h>
 
-VkInstance createInstance(const char* applicationName, uint32_t applicationVersion);
+VkInstance createInstance();
 
 class Queue {
 public:
@@ -24,48 +23,17 @@ public:
     Queue renderQueue;
     VkDevice logical;
 
+    Device() = default;
     Device(VkInstance instance, VkSurfaceKHR surface);
     void destroy();
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
-
-    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
 
-class Buffer {
-public:
-    VkDeviceMemory memory;
-
-    Buffer() = default;
-    Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
-    void destroy(VkDevice device);
-
-    operator VkBuffer();
-
-private:
-    VkBuffer buffer;
-};
-
-VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
-
-VkPipeline createComputePipeline(VkDevice device, const char* shaderPath, VkPipelineLayout pipelineLayout);
-
-struct GraphicsPipelineCreateInfo {
-    const char* vertexShaderPath;
-    const char* fragmentShaderPath;
-    const VkPipelineVertexInputStateCreateInfo* vertexInputStateCreateInfo;
-    VkPolygonMode polygonMode;
-    VkPipelineLayout pipelineLayout;
-    VkRenderPass renderPass;
-};
-
-VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
-
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
-
 void createGuiFonts(Device& device);
 
 struct RendererCreateInfo {
@@ -73,34 +41,28 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkRenderPass renderPass;
-    VkDeviceSize cameraDataSize;
     uint32_t framesInFlight;
 };
 
 class Renderer {
 public:
+    Renderer() = default;
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    bool draw(Device& device, const void* cameraData, VkExtent2D extent, VkRenderPass renderPass, ImDrawData* drawData);
+    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImDrawData* drawData);
 
     void waitIdle(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool commandPool;
-    VkDescriptorSetLayout descriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
     VkFramebuffer* framebuffers;
     VkCommandBuffer* commandBuffers;
-    VkDeviceSize cameraDataSize;
-    Buffer uniformBuffer;
-    void* mappedUniformBufferMemory;
-    VkDescriptorPool descriptorPool;
-    VkDescriptorSet* descriptorSets;
     uint32_t framesInFlight;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
@@ -113,5 +75,3 @@ private:
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
 };
-
-#endif // !GRAPHICS_H
