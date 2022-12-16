@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <array>
 #include <vector>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
@@ -46,8 +47,8 @@ VkQueue* Queue::operator&() {
     return &queue;
 }
 
-static std::vector<const char*> getDeviceExtensions() {
-    std::vector<const char*> deviceExtensions = {
+static std::array<const char*, 4> getDeviceExtensions() {
+    std::array<const char*, 4> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -168,7 +169,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
+        .enabledExtensionCount   = deviceExtensions.size(),
         .ppEnabledExtensionNames = deviceExtensions.data(),
         .pEnabledFeatures        = nullptr
     };
