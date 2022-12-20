@@ -43,8 +43,6 @@ void Application::run() {
                 glfwGetFramebufferSize(window, &width, &height);
             }
 
-            surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
-
             auto rendererCreateInfo = getRendererCreateInfo();
 
             renderer.waitIdle(device.logical);
@@ -63,7 +61,6 @@ void Application::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
-    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, surfaceFormat.format);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
@@ -98,6 +95,8 @@ void Application::createGuiResources() {
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {
+    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
+
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,

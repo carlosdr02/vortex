@@ -177,15 +177,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
 
     // Get the device queue.
-    VkDeviceQueueInfo2 deviceQueueInfo = {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = renderQueue.familyIndex,
-        .queueIndex       = 0
-    };
-
-    vkGetDeviceQueue2(logical, &deviceQueueInfo, &renderQueue);
+    vkGetDeviceQueue(logical, renderQueue.familyIndex, 0, &renderQueue);
 }
 
 void Device::destroy() {
@@ -236,9 +228,7 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
 }
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
-    VkAttachmentDescription2 colorAttachmentDescription = {
-        .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-        .pNext          = nullptr,
+    VkAttachmentDescription colorAttachmentDescription = {
         .flags          = 0,
         .format         = colorFormat,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
@@ -250,20 +240,14 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
         .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     };
 
-    VkAttachmentReference2 colorAttachmentReference = {
-        .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-        .pNext      = nullptr,
+    VkAttachmentReference colorAttachmentReference = {
         .attachment = 0,
-        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .aspectMask = 0
+        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     };
 
-    VkSubpassDescription2 subpassDescription = {
-        .sType                   = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-        .pNext                   = nullptr,
+    VkSubpassDescription subpassDescription = {
         .flags                   = 0,
         .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .viewMask                = 0,
         .inputAttachmentCount    = 0,
         .pInputAttachments       = nullptr,
         .colorAttachmentCount    = 1,
@@ -274,21 +258,18 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
         .pPreserveAttachments    = nullptr
     };
 
-    VkSubpassDependency2 subpassDependency = {
-        .sType           = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-        .pNext           = nullptr,
+    VkSubpassDependency subpassDependency = {
         .srcSubpass      = VK_SUBPASS_EXTERNAL,
         .dstSubpass      = 0,
         .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         .dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         .srcAccessMask   = 0,
         .dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        .dependencyFlags = 0,
-        .viewOffset      = 0
+        .dependencyFlags = 0
     };
 
-    VkRenderPassCreateInfo2 renderPassCreateInfo = {
-        .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+    VkRenderPassCreateInfo renderPassCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext                   = nullptr,
         .flags                   = 0,
         .attachmentCount         = 1,
@@ -296,13 +277,11 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
         .subpassCount            = 1,
         .pSubpasses              = &subpassDescription,
         .dependencyCount         = 1,
-        .pDependencies           = &subpassDependency,
-        .correlatedViewMaskCount = 0,
-        .pCorrelatedViewMasks    = nullptr
+        .pDependencies           = &subpassDependency
     };
 
     VkRenderPass renderPass;
-    vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
+    vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass);
 
     return renderPass;
 }
@@ -483,9 +462,6 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     imageFences[imageIndex] = frameFences[frameIndex];
 
-    vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
-    vkResetFences(device.logical, 1, &frameFences[frameIndex]);
-
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext            = nullptr,
@@ -515,24 +491,16 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         .pClearValues    = clearValues
     };
 
-    VkSubpassBeginInfo subpassBeginInfo = {
-        .sType    = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-        .pNext    = nullptr,
-        .contents = VK_SUBPASS_CONTENTS_INLINE
-    };
-
-    vkCmdBeginRenderPass2(commandBuffers[imageIndex], &renderPassBeginInfo, &subpassBeginInfo);
+    vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[imageIndex]);
 
-    VkSubpassEndInfo subpassEndInfo = {
-        .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
-        .pNext = nullptr
-    };
-
-    vkCmdEndRenderPass2(commandBuffers[imageIndex], &subpassEndInfo);
+    vkCmdEndRenderPass(commandBuffers[imageIndex]);
 
     vkEndCommandBuffer(commandBuffers[imageIndex]);
+
+    vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device.logical, 1, &frameFences[frameIndex]);
 
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
