@@ -47,7 +47,7 @@ VkQueue* Queue::operator&() {
     return &queue;
 }
 
-static std::array<const char*, 4> getDeviceExtensions() {
+static auto getDeviceExtensions() {
     std::array<const char*, 4> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -75,30 +75,35 @@ static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance insta
     std::erase_if(physicalDevices, isNotDiscrete);
 
     auto doesNotSupportRequiredExtensions = [](VkPhysicalDevice physicalDevice) {
-        auto deviceExtensions = getDeviceExtensions();
+        std::array<const char*, 4> deviceExtensions = getDeviceExtensions();
 
         uint32_t extensionPropertyCount;
         vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
 
-        std::vector<VkExtensionProperties> extensionProperties(extensionPropertyCount);
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties.data());
+        VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
+
+        bool doesNotSupportExtensions = false;
 
         for (auto requiredExtension : deviceExtensions) {
             bool isExtensionAvailable = false;
 
-            for (const auto& availableExtension : extensionProperties) {
-                if (strcmp(requiredExtension, availableExtension.extensionName) == 0) {
+            for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
+                if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
                     isExtensionAvailable = true;
                     break;
                 }
             }
 
             if (!isExtensionAvailable) {
-                return true;
+                doesNotSupportExtensions = true;
+                break;
             }
         }
 
-        return false;
+        delete[] extensionProperties;
+
+        return doesNotSupportExtensions;
     };
 
     std::erase_if(physicalDevices, doesNotSupportRequiredExtensions);
@@ -132,8 +137,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     uint32_t queueFamilyPropertyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
 
-    std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyPropertyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties.data());
+    VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
         if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
@@ -146,6 +151,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
             }
         }
     }
+
+    delete[] queueFamilyProperties;
 
     // Create the device.
     float queuePriority = 1.0f;
@@ -213,18 +220,23 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
     uint32_t surfaceFormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, nullptr);
     
-    std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatCount);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats.data());
+    VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
+    vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
+
+    VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
     for (auto format : formats) {
-        for (auto surfaceFormat : surfaceFormats) {
-            if (format == surfaceFormat.format && surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                return surfaceFormat;
+        for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
+            if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                surfaceFormat = surfaceFormats[i];
+                break;
             }
         }
     }
 
-    return surfaceFormats[0];
+    delete[] surfaceFormats;
+
+    return surfaceFormat;
 }
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
