@@ -1,5 +1,4 @@
 .cache/
 .vs/
-build/*
-!build/imgui.ini
+build/
 out/
