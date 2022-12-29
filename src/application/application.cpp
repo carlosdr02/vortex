@@ -32,7 +32,7 @@ void Application::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        auto drawData = imGuiLayer.render();
+        ImDrawData* drawData = imGuiLayer.render();
 
         if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent, drawData)) {
             int width, height;
@@ -43,7 +43,7 @@ void Application::run() {
                 glfwGetFramebufferSize(window, &width, &height);
             }
 
-            auto rendererCreateInfo = getRendererCreateInfo();
+            RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
@@ -65,7 +65,7 @@ void Application::createEngineResources() {
     renderPass = createRenderPass(device.logical, surfaceFormat.format);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
-    auto rendererCreateInfo = getRendererCreateInfo();
+    RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
     renderer = Renderer(device, rendererCreateInfo);
 }
