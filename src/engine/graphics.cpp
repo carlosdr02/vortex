@@ -1,7 +1,5 @@
 #include "graphics.h"
 
-#include <stdio.h>
-
 #include <algorithm>
 #include <array>
 #include <vector>
@@ -47,7 +45,14 @@ VkQueue* Queue::operator&() {
     return &queue;
 }
 
-static auto getDeviceExtensions() {
+static bool isNotDiscrete(VkPhysicalDevice physicalDevice) {
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+    return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+}
+
+static std::array<const char*, 4> getRequiredDeviceExtensions() {
     std::array<const char*, 4> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -58,6 +63,38 @@ static auto getDeviceExtensions() {
     return deviceExtensions;
 }
 
+static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
+    std::array<const char*, 4> requiredDeviceExtensions = getRequiredDeviceExtensions();
+
+    uint32_t extensionPropertyCount;
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
+
+    VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
+
+    bool doesNotSupportExtensions = true;
+
+    for (const char* requiredExtension : requiredDeviceExtensions) {
+        bool isExtensionAvailable = false;
+
+        for (uint32_t j = 0; j < extensionPropertyCount; ++j) {
+            if (strcmp(requiredExtension, extensionProperties[j].extensionName) == 0) {
+                isExtensionAvailable = true;
+                break;
+            }
+        }
+
+        if (!isExtensionAvailable) {
+            doesNotSupportExtensions = false;
+            break;
+        }
+    }
+
+    delete[] extensionProperties;
+
+    return doesNotSupportExtensions;
+}
+
 static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
     uint32_t physicalDeviceCount;
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
@@ -65,47 +102,7 @@ static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance insta
     std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
     vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
 
-    auto isNotDiscrete = [](VkPhysicalDevice physicalDevice) {
-        VkPhysicalDeviceProperties properties;
-        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-        return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-    };
-
     std::erase_if(physicalDevices, isNotDiscrete);
-
-    auto doesNotSupportRequiredExtensions = [](VkPhysicalDevice physicalDevice) {
-        std::array<const char*, 4> deviceExtensions = getDeviceExtensions();
-
-        uint32_t extensionPropertyCount;
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
-
-        VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
-        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
-
-        bool doesNotSupportExtensions = false;
-
-        for (auto requiredExtension : deviceExtensions) {
-            bool isExtensionAvailable = false;
-
-            for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-                if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
-                    isExtensionAvailable = true;
-                    break;
-                }
-            }
-
-            if (!isExtensionAvailable) {
-                doesNotSupportExtensions = true;
-                break;
-            }
-        }
-
-        delete[] extensionProperties;
-
-        return doesNotSupportExtensions;
-    };
-
     std::erase_if(physicalDevices, doesNotSupportRequiredExtensions);
 
     return physicalDevices;
@@ -166,7 +163,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
-    auto deviceExtensions = getDeviceExtensions();
+    std::array<const char*, 4> deviceExtensions = getRequiredDeviceExtensions();
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -219,21 +216,22 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
 
     uint32_t surfaceFormatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, nullptr);
-    
+
     VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
-    for (auto format : formats) {
+    for (VkFormat format : formats) {
         for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
             if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 surfaceFormat = surfaceFormats[i];
-                break;
+                goto exit;
             }
         }
     }
 
+exit:
     delete[] surfaceFormats;
 
     return surfaceFormat;
@@ -400,31 +398,26 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Create the swapchain resources.
     createSwapchainResources(device, createInfo);
 
-    // Create the semaphores.
+    // Create the semaphores and fences.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-        };
-
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
-        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
-    }
-
-    // Create the fences.
     frameFences = new VkFence[framesInFlight];
 
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        VkFenceCreateInfo fenceCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-        };
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0
+    };
 
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    };
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
         vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
 }
@@ -569,7 +562,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = createInfo.surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = VK_PRESENT_MODE_IMMEDIATE_KHR, // TODO
+        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };
@@ -587,15 +580,15 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     // Create the swapchain image views.
     swapchainImageViews = new VkImageView[swapchainImageCount];
 
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageSubresourceRange imageSubresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
+    VkImageSubresourceRange imageSubresourceRange = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel   = 0,
+        .levelCount     = 1,
+        .baseArrayLayer = 0,
+        .layerCount     = 1
+    };
 
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkImageViewCreateInfo imageViewCreateInfo = {
             .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .pNext            = nullptr,

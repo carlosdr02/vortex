@@ -11,7 +11,6 @@ ImGuiLayer::ImGuiLayer() {
 
     ImGuiIO& io = GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 }
 
 void ImGuiLayer::destroy() {
@@ -36,9 +35,6 @@ ImDrawData* ImGuiLayer::render() {
     if (propertiesPanel) renderPropertiesPanel();
 
     Render();
-
-    //UpdatePlatformWindows();
-    //RenderPlatformWindowsDefault();
 
     auto drawData = GetDrawData();
 
