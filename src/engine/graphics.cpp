@@ -512,7 +512,7 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     imageFences[imageIndex] = frameFences[frameIndex];
 
-    imGuiLayer.render();
+    imGuiLayer.render(descriptorSets[imageIndex]);
 
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

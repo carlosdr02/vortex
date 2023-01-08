@@ -19,7 +19,7 @@ void ImGuiLayer::destroy() {
     DestroyContext();
 }
 
-void ImGuiLayer::render() {
+void ImGuiLayer::render(VkDescriptorSet descriptorSet) {
     pollEvents();
 
     ImGui_ImplVulkan_NewFrame();
@@ -29,7 +29,7 @@ void ImGuiLayer::render() {
     DockSpaceOverViewport();
 
     renderMainMenuBar();
-    renderViewport();
+    renderViewport(descriptorSet);
     if (projectPanel) renderProjectPanel();
     if (hierarchyPanel) renderHierarchyPanel();
     if (propertiesPanel) renderPropertiesPanel();
@@ -75,9 +75,10 @@ void ImGuiLayer::renderMainMenuBar() {
     }
 }
 
-void ImGuiLayer::renderViewport() {
+void ImGuiLayer::renderViewport(VkDescriptorSet descriptorSet) {
     SetNextWindowBgAlpha(1.0f);
     Begin("Viewport");
+    Image(descriptorSet, GetContentRegionAvail());
     End();
 }
 
