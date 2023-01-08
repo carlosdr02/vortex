@@ -78,6 +78,7 @@ private:
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
     VkSampler sampler;
+    VkDescriptorSet* descriptorSets;
     ImGuiLayer imGuiLayer;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);

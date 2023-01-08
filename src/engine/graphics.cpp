@@ -756,6 +756,13 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
         vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &storageImageViews[i]);
     }
+
+    // Create the descriptor sets.
+    descriptorSets = new VkDescriptorSet[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        descriptorSets[i] = ImGui_ImplVulkan_AddTexture(sampler, storageImageViews[i], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
@@ -776,6 +783,7 @@ void Renderer::destroySwapchainResources(VkDevice device) {
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
     }
 
+    delete[] descriptorSets;
     delete[] storageImageViews;
     delete[] storageImages;
     delete[] imageFences;
