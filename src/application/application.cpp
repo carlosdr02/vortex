@@ -6,6 +6,7 @@ Application::Application() {
     createWindow();
     createEngineResources();
     createGuiResources();
+    renderer.createDescriptorSets(device.logical);
 }
 
 Application::~Application() {
@@ -32,9 +33,7 @@ void Application::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        ImDrawData* drawData = imGuiLayer.render();
-
-        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent, drawData)) {
+        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent, &imGuiLayer)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 

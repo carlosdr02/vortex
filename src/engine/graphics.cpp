@@ -17,6 +17,8 @@ VkInstance createInstance() {
         .apiVersion         = VK_API_VERSION_1_3
     };
 
+    auto layer = "VK_LAYER_KHRONOS_validation";
+
     uint32_t extensionCount;
     const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
 
@@ -25,8 +27,8 @@ VkInstance createInstance() {
         .pNext                   = nullptr,
         .flags                   = 0,
         .pApplicationInfo        = &applicationInfo,
-        .enabledLayerCount       = 0,
-        .ppEnabledLayerNames     = nullptr,
+        .enabledLayerCount       = 1,
+        .ppEnabledLayerNames     = &layer,
         .enabledExtensionCount   = extensionCount,
         .ppEnabledExtensionNames = extensions
     };
@@ -237,6 +239,21 @@ exit:
     return surfaceFormat;
 }
 
+uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physical, &physicalDeviceMemoryProperties);
+
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i) {
+        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryTypes[i];
+
+        if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
+            return i;
+        }
+    }
+
+    return UINT32_MAX;
+}
+
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
     VkAttachmentDescription colorAttachmentDescription = {
         .flags          = 0,
@@ -395,9 +412,6 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
-    // Create the swapchain resources.
-    createSwapchainResources(device, createInfo);
-
     // Create the semaphores and fences.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -409,17 +423,27 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
         .flags = 0
     };
 
-    VkFenceCreateInfo fenceCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT
-    };
-
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
         vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+    }
+
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0
+    };
+
+    vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[0]);
+
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (uint32_t i = 1; i < framesInFlight; ++i) {
         vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
+
+    // Create the swapchain resources.
+    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
@@ -456,7 +480,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImDrawData* drawData) {
+bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImGuiLayer* imguiLayer) {
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
@@ -496,11 +520,47 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         .pClearValues    = clearValues
     };
 
+    VkImageSubresourceRange isr = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel   = 0,
+        .levelCount     = 1,
+        .baseArrayLayer = 0,
+        .layerCount     = 1
+    };
+
+    VkClearColorValue colorValue = { 1.0f, 1.0f, 0.0f, 1.0f };
+
+    vkCmdClearColorImage(commandBuffers[imageIndex], storageImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &colorValue, 1, &isr);
+
+    VkImageMemoryBarrier imageMemoryBarrier = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .pNext = nullptr,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+        .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = storageImages[imageIndex],
+        .subresourceRange = isr
+    };
+
+    vkCmdPipelineBarrier(commandBuffers[imageIndex], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
     vkCmdBeginRenderPass(commandBuffers[imageIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[imageIndex]);
+    auto data = imguiLayer->render(descriptorSets[imageIndex]);
+
+    ImGui_ImplVulkan_RenderDrawData(data, commandBuffers[imageIndex]);
 
     vkCmdEndRenderPass(commandBuffers[imageIndex]);
+
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    vkCmdPipelineBarrier(commandBuffers[imageIndex], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
     vkEndCommandBuffer(commandBuffers[imageIndex]);
 
@@ -606,6 +666,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     // Create the framebuffers.
     framebuffers = new VkFramebuffer[swapchainImageCount];
 
+    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         VkFramebufferCreateInfo framebufferCreateInfo = {
             .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -614,8 +676,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .renderPass      = createInfo.renderPass,
             .attachmentCount = 1,
             .pAttachments    = &swapchainImageViews[i],
-            .width           = createInfo.surfaceCapabilities->currentExtent.width,
-            .height          = createInfo.surfaceCapabilities->currentExtent.height,
+            .width           = extent.width,
+            .height          = extent.height,
             .layers          = 1
         };
 
@@ -637,9 +699,159 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     // Allocate memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
+
+    // Create the storage images.
+    storageImages = new VkImage[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageCreateInfo imageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = createInfo.surfaceFormat.format,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &storageImages[i]);
+    }
+
+    // Allocate memory for the storage images.
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, storageImages[0], &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = swapchainImageCount * memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &storageImagesMemory);
+
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        bindImageMemoryInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext = nullptr;
+        bindImageMemoryInfos[i].image = storageImages[i];
+        bindImageMemoryInfos[i].memory = storageImagesMemory;
+        bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
+    }
+
+    vkBindImageMemory2(device.logical, swapchainImageCount, bindImageMemoryInfos);
+
+    delete[] bindImageMemoryInfos;
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
+
+    VkImageMemoryBarrier* imageMemoryBarriers = new VkImageMemoryBarrier[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageMemoryBarriers[i].pNext = nullptr;
+        imageMemoryBarriers[i].srcAccessMask = 0;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].image = storageImages[i];
+        imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
+    }
+
+    vkCmdPipelineBarrier(commandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, swapchainImageCount, imageMemoryBarriers);
+
+    vkEndCommandBuffer(commandBuffers[0]);
+
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 0,
+        .pWaitSemaphores = nullptr,
+        .pWaitDstStageMask = nullptr,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &commandBuffers[0],
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores = nullptr
+    };
+
+    vkQueueSubmit(device.renderQueue, 1, &submitInfo, frameFences[0]);
+    vkWaitForFences(device.logical, 1, &frameFences[0], VK_TRUE, UINT64_MAX);
+
+    // Create the storage image views.
+    storageImageViews = new VkImageView[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = storageImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = createInfo.surfaceFormat.format,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = imageSubresourceRange
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &storageImageViews[i]);
+    }
+
+    // Create the sampler.
+    VkSamplerCreateInfo samplerCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .magFilter = VK_FILTER_LINEAR,
+        .minFilter = VK_FILTER_LINEAR,
+        .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        .maxAnisotropy = 1.0f,
+        .minLod = -1000,
+        .maxLod = 1000
+    };
+
+    vkCreateSampler(device.logical, &samplerCreateInfo, nullptr, &sampler);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
+    vkDestroySampler(device, sampler, nullptr);
+
+    // aaaa
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImageView(device, storageImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, storageImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImage(device, storageImages[i], nullptr);
+    }
+
+    delete[] storageImageViews;
+    delete[] storageImages;
+    // aaaa
+
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -652,4 +864,12 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     delete[] framebuffers;
     delete[] swapchainImageViews;
     delete[] swapchainImages;
+}
+
+void Renderer::createDescriptorSets(VkDevice device) {
+    descriptorSets = new VkDescriptorSet[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        descriptorSets[i] = ImGui_ImplVulkan_AddTexture(sampler, storageImageViews[i], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
 }

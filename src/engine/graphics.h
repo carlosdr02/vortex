@@ -1,4 +1,5 @@
 #pragma once
+#include "gui.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -29,6 +30,8 @@ public:
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
+
+    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
@@ -51,9 +54,10 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImDrawData* drawData);
+    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImGuiLayer* imguiLayer);
 
     void waitIdle(VkDevice device);
+    void createDescriptorSets(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
@@ -70,6 +74,12 @@ private:
     VkFence* frameFences;
     uint32_t imageIndex;
     uint32_t frameIndex;
+
+    VkImage* storageImages;
+    VkDeviceMemory storageImagesMemory;
+    VkImageView* storageImageViews;
+    VkSampler sampler;
+    VkDescriptorSet* descriptorSets;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);

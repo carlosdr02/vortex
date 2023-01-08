@@ -65,6 +65,7 @@ TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC
 
 TARGET_LINK_LIBRARIES(engine imgui)
 TARGET_LINK_LIBRARIES(interface imgui)
+TARGET_LINK_LIBRARIES(engine interface)
 
 # Executable
 ADD_EXECUTABLE(vortex src/main.cpp)

@@ -8,7 +8,7 @@ public:
     ImGuiLayer();
     void destroy();
 
-    ImDrawData* render();
+    ImDrawData* render(VkDescriptorSet descriptorSet);
 
 private:
     bool projectPanel = true;
@@ -17,7 +17,7 @@ private:
 
     void pollEvents();
     void renderMainMenuBar();
-    void renderViewport();
+    void renderViewport(VkDescriptorSet descriptorSet);
     void renderProjectPanel();
     void renderHierarchyPanel();
     void renderPropertiesPanel();
