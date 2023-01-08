@@ -739,6 +739,54 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkBindImageMemory2(device.logical, swapchainImageCount, bindImageMemoryInfos);
 
+    delete[] bindImageMemoryInfos;
+
+    // Set the image layout.
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
+
+    VkImageMemoryBarrier* imageMemoryBarriers = new VkImageMemoryBarrier[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageMemoryBarriers[i].pNext = nullptr;
+        imageMemoryBarriers[i].srcAccessMask = 0;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].image = storageImages[i];
+        imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
+    }
+
+    vkCmdPipelineBarrier(commandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, swapchainImageCount, imageMemoryBarriers);
+
+    delete[] imageMemoryBarriers;
+
+    vkEndCommandBuffer(commandBuffers[0]);
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 0,
+        .pWaitSemaphores      = nullptr,
+        .pWaitDstStageMask    = nullptr,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffers[0],
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores    = nullptr
+    };
+
+    vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(device.renderQueue);
+
     // Create the storage image views.
     storageImageViews = new VkImageView[swapchainImageCount];
 
