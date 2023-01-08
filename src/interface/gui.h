@@ -8,7 +8,7 @@ public:
     ImGuiLayer();
     void destroy();
 
-    ImDrawData* render();
+    void render();
 
 private:
     bool projectPanel = true;

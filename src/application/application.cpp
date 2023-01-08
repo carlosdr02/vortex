@@ -6,12 +6,14 @@ Application::Application() {
     createWindow();
     createEngineResources();
     createGuiResources();
+
+    RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
+
+    renderer = Renderer(device, rendererCreateInfo);
 }
 
 Application::~Application() {
     renderer.waitIdle(device.logical);
-
-    imGuiLayer.destroy();
 
     renderer.destroy(device.logical);
 
@@ -32,9 +34,7 @@ void Application::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        ImDrawData* drawData = imGuiLayer.render();
-
-        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent, drawData)) {
+        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -43,6 +43,7 @@ void Application::run() {
                 glfwGetFramebufferSize(window, &width, &height);
             }
 
+            surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
             renderer.waitIdle(device.logical);
@@ -61,13 +62,10 @@ void Application::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
+    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, surfaceFormat.format);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
-
-    RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
-
-    renderer = Renderer(device, rendererCreateInfo);
 }
 
 void Application::createGuiResources() {
@@ -95,8 +93,6 @@ void Application::createGuiResources() {
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {
-    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
-
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,

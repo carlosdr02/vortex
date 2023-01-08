@@ -69,7 +69,7 @@ TARGET_LINK_LIBRARIES(interface imgui)
 # Executable
 ADD_EXECUTABLE(vortex src/main.cpp)
 
+TARGET_LINK_LIBRARIES(engine interface)
 TARGET_LINK_LIBRARIES(application engine)
-TARGET_LINK_LIBRARIES(application interface)
 
 TARGET_LINK_LIBRARIES(vortex application)

@@ -19,7 +19,7 @@ void ImGuiLayer::destroy() {
     DestroyContext();
 }
 
-ImDrawData* ImGuiLayer::render() {
+void ImGuiLayer::render() {
     pollEvents();
 
     ImGui_ImplVulkan_NewFrame();
@@ -35,10 +35,6 @@ ImDrawData* ImGuiLayer::render() {
     if (propertiesPanel) renderPropertiesPanel();
 
     Render();
-
-    auto drawData = GetDrawData();
-
-    return drawData;
 }
 
 void ImGuiLayer::pollEvents() {

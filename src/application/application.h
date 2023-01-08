@@ -1,7 +1,6 @@
 #pragma once
 
 #include <graphics.h>
-#include <gui.h>
 
 class Application {
 public:
@@ -20,7 +19,6 @@ private:
     VkRenderPass renderPass;
     VkDescriptorPool guiDescriptorPool;
     Renderer renderer;
-    ImGuiLayer imGuiLayer;
 
     void createWindow();
     void createEngineResources();

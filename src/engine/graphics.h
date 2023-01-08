@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <imgui_impl_vulkan.h>
 
+#include <gui.h>
+
 VkInstance createInstance();
 
 class Queue {
@@ -29,6 +31,8 @@ public:
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
+
+    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
@@ -51,7 +55,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent, ImDrawData* drawData);
+    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
 
@@ -70,6 +74,11 @@ private:
     VkFence* frameFences;
     uint32_t imageIndex;
     uint32_t frameIndex;
+    VkImage* storageImages;
+    VkDeviceMemory storageImagesMemory;
+    VkImageView* storageImageViews;
+    VkSampler sampler;
+    ImGuiLayer imGuiLayer;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
