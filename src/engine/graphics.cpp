@@ -154,6 +154,12 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
+    VkPhysicalDeviceVulkan13Features enabledFeatures = {
+        .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+        .pNext            = nullptr,
+        .synchronization2 = VK_TRUE
+    };
+
     float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
@@ -169,7 +175,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext                   = nullptr,
+        .pNext                   = &enabledFeatures,
         .flags                   = 0,
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
@@ -433,13 +439,15 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
 
-    VkImageMemoryBarrier* imageMemoryBarriers = new VkImageMemoryBarrier[swapchainImageCount];
+    VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[swapchainImageCount];
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarriers[i].pNext = nullptr,
-        imageMemoryBarriers[i].srcAccessMask = 0,
-        imageMemoryBarriers[i].dstAccessMask = 0;
+        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageMemoryBarriers[i].pNext = nullptr;
+        imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[i].srcAccessMask = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_NONE;
         imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -448,7 +456,19 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
     }
 
-    vkCmdPipelineBarrier(commandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, swapchainImageCount, imageMemoryBarriers);
+    VkDependencyInfo dependencyInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext                    = nullptr,
+        .dependencyFlags          = 0,
+        .memoryBarrierCount       = 0,
+        .pMemoryBarriers          = nullptr,
+        .bufferMemoryBarrierCount = 0,
+        .pBufferMemoryBarriers    = nullptr,
+        .imageMemoryBarrierCount  = swapchainImageCount,
+        .pImageMemoryBarriers     = imageMemoryBarriers
+    };
+
+    vkCmdPipelineBarrier2(commandBuffers[0], &dependencyInfo);
 
     delete[] imageMemoryBarriers;
 
