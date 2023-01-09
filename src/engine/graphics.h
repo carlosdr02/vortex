@@ -40,7 +40,7 @@ struct RendererCreateInfo {
 class Renderer {
 public:
     Renderer() = default;
-    Renderer(VkDevice device, const RendererCreateInfo& createInfo);
+    Renderer(Device& device, const RendererCreateInfo& createInfo);
     void recreate(VkDevice device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
@@ -49,7 +49,10 @@ private:
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
 
+    VkCommandPool commandPool;
+    VkCommandBuffer* commandBuffers;
+
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(VkDevice device);
-    void destroySwapchainResources();
+    void destroySwapchainResources(VkDevice device);
 };

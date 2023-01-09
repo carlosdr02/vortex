@@ -239,17 +239,27 @@ exit:
     return surfaceFormat;
 }
 
-Renderer::Renderer(VkDevice device, const RendererCreateInfo& createInfo) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     // Create the swapchain.
-    createSwapchain(device, createInfo, VK_NULL_HANDLE);
+    createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the swapchain resources.
-    createSwapchainResources(device);
+    createSwapchainResources(device.logical);
+
+    // Create the command pool.
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = device.renderQueue.familyIndex
+    };
+
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 }
 
 void Renderer::recreate(VkDevice device, const RendererCreateInfo& createInfo) {
     // Destroy the old swapchain resources.
-    destroySwapchainResources();
+    destroySwapchainResources(device);
 
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
@@ -265,7 +275,9 @@ void Renderer::recreate(VkDevice device, const RendererCreateInfo& createInfo) {
 }
 
 void Renderer::destroy(VkDevice device) {
-    destroySwapchainResources();
+    vkDestroyCommandPool(device, commandPool, nullptr);
+
+    destroySwapchainResources(device);
 
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
@@ -301,8 +313,24 @@ void Renderer::createSwapchainResources(VkDevice device) {
 
     swapchainImages = new VkImage[swapchainImageCount];
     vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages);
+
+    // Allocate the command buffers.
+    commandBuffers = new VkCommandBuffer[swapchainImageCount];
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = swapchainImageCount
+    };
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
 }
 
-void Renderer::destroySwapchainResources() {
+void Renderer::destroySwapchainResources(VkDevice device) {
+    vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
+
+    delete[] commandBuffers;
     delete[] swapchainImages;
 }
