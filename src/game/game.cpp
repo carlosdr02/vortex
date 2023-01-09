@@ -39,7 +39,7 @@ void Game::createEngineResources() {
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
-    renderer = Renderer(device.logical, rendererCreateInfo);
+    renderer = Renderer(device, rendererCreateInfo);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {

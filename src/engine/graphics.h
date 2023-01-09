@@ -28,6 +28,8 @@ public:
 
     VkSurfaceCapabilitiesKHR getSurfaceCapabilities(VkSurfaceKHR surface, GLFWwindow* window);
     VkSurfaceFormatKHR getSurfaceFormat(VkSurfaceKHR surface);
+
+    uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
 struct RendererCreateInfo {
@@ -41,7 +43,7 @@ class Renderer {
 public:
     Renderer() = default;
     Renderer(Device& device, const RendererCreateInfo& createInfo);
-    void recreate(VkDevice device, const RendererCreateInfo& createInfo);
+    void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
 private:
@@ -49,10 +51,14 @@ private:
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
 
+    VkImage* storageImages;
+    VkDeviceMemory storageImagesMemory;
+    VkImageView* storageImageViews;
+
     VkCommandPool commandPool;
     VkCommandBuffer* commandBuffers;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
-    void createSwapchainResources(VkDevice device);
+    void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
 };

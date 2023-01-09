@@ -239,12 +239,24 @@ exit:
     return surfaceFormat;
 }
 
+uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties) {
+    VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(physical, &physicalDeviceMemoryProperties);
+
+    for (uint32_t i = 0; i < physicalDeviceMemoryProperties.memoryTypeCount; ++i) {
+        VkMemoryType memoryType = physicalDeviceMemoryProperties.memoryTypes[i];
+
+        if (memoryTypeBits & (1 << i) && (memoryType.propertyFlags & memoryProperties) == memoryProperties) {
+            return i;
+        }
+    }
+
+    return UINT32_MAX;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     // Create the swapchain.
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
-
-    // Create the swapchain resources.
-    createSwapchainResources(device.logical);
 
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
@@ -255,30 +267,32 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     };
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    // Create the swapchain resources.
+    createSwapchainResources(device, createInfo);
 }
 
-void Renderer::recreate(VkDevice device, const RendererCreateInfo& createInfo) {
+void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
     // Destroy the old swapchain resources.
-    destroySwapchainResources(device);
+    destroySwapchainResources(device.logical);
 
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
 
     // Create the new swapchain.
-    createSwapchain(device, createInfo, oldSwapchain);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
 
     // Create the new swapchain resources.
-    createSwapchainResources(device);
+    createSwapchainResources(device, createInfo);
 }
 
 void Renderer::destroy(VkDevice device) {
-    vkDestroyCommandPool(device, commandPool, nullptr);
-
     destroySwapchainResources(device);
 
+    vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
@@ -307,12 +321,94 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
-void Renderer::createSwapchainResources(VkDevice device) {
+void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {
     // Get the swapchain images.
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
     swapchainImages = new VkImage[swapchainImageCount];
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages);
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
+
+    // Create the storage images.
+    storageImages = new VkImage[swapchainImageCount];
+
+    VkExtent2D extent = createInfo.surfaceCapabilities.currentExtent;
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageCreateInfo imageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = VK_FORMAT_R16G16B16A16_SFLOAT,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &storageImages[i]);
+    }
+
+    // Allocate device memory.
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, storageImages[0], &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = swapchainImageCount * memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &storageImagesMemory);
+
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        bindImageMemoryInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext = nullptr;
+        bindImageMemoryInfos[i].image = storageImages[i];
+        bindImageMemoryInfos[i].memory = storageImagesMemory;
+        bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
+    }
+
+    vkBindImageMemory2(device.logical, swapchainImageCount, bindImageMemoryInfos);
+
+    delete[] bindImageMemoryInfos;
+
+    // Create the storage image views.
+    storageImageViews = new VkImageView[swapchainImageCount];
+
+    VkImageSubresourceRange imageSubresourceRange = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel   = 0,
+        .levelCount     = 1,
+        .baseArrayLayer = 0,
+        .layerCount     = 1
+    };
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = storageImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = VK_FORMAT_R16G16B16A16_SFLOAT,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = imageSubresourceRange
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &storageImageViews[i]);
+    }
 
     // Allocate the command buffers.
     commandBuffers = new VkCommandBuffer[swapchainImageCount];
@@ -325,12 +421,24 @@ void Renderer::createSwapchainResources(VkDevice device) {
         .commandBufferCount = swapchainImageCount
     };
 
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImageView(device, storageImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, storageImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        vkDestroyImage(device, storageImages[i], nullptr);
+    }
+
     delete[] commandBuffers;
+    delete[] storageImageViews;
+    delete[] storageImages;
     delete[] swapchainImages;
 }
