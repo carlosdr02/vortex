@@ -439,9 +439,27 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
 
-    VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[swapchainImageCount];
+    uint32_t imageMemoryBarrierCount = 2 * swapchainImageCount;
+    VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[imageMemoryBarrierCount];
 
+    // Swapchain image memory barriers.
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageMemoryBarriers[i].pNext = nullptr;
+        imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[i].srcAccessMask = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].image = swapchainImages[i];
+        imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
+    }
+
+    // Storage image memory barriers.
+    for (uint32_t i = swapchainImageCount; i < imageMemoryBarrierCount; ++i) {
         imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
         imageMemoryBarriers[i].pNext = nullptr;
         imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
@@ -452,7 +470,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[i].image = storageImages[i];
+        imageMemoryBarriers[i].image = storageImages[i - swapchainImageCount];
         imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
     }
 
@@ -464,7 +482,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         .pMemoryBarriers          = nullptr,
         .bufferMemoryBarrierCount = 0,
         .pBufferMemoryBarriers    = nullptr,
-        .imageMemoryBarrierCount  = swapchainImageCount,
+        .imageMemoryBarrierCount  = imageMemoryBarrierCount,
         .pImageMemoryBarriers     = imageMemoryBarriers
     };
 
