@@ -307,7 +307,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .imageColorSpace       = createInfo.surfaceFormat.colorSpace,
         .imageExtent           = createInfo.surfaceCapabilities.currentExtent,
         .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage            = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices   = nullptr,
@@ -345,7 +345,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
@@ -422,6 +422,52 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     };
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
+
+    // Set the storage image layouts.
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffers[0], &commandBufferBeginInfo);
+
+    VkImageMemoryBarrier* imageMemoryBarriers = new VkImageMemoryBarrier[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageMemoryBarriers[i].pNext = nullptr,
+        imageMemoryBarriers[i].srcAccessMask = 0,
+        imageMemoryBarriers[i].dstAccessMask = 0;
+        imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageMemoryBarriers[i].image = storageImages[i];
+        imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
+    }
+
+    vkCmdPipelineBarrier(commandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, swapchainImageCount, imageMemoryBarriers);
+
+    delete[] imageMemoryBarriers;
+
+    vkEndCommandBuffer(commandBuffers[0]);
+
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 0,
+        .pWaitSemaphores      = nullptr,
+        .pWaitDstStageMask    = nullptr,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffers[0],
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores    = nullptr
+    };
+
+    vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(device.renderQueue);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
