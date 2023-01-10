@@ -46,6 +46,8 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
+    void recordCommandBuffers(VkDevice device, VkExtent2D extent);
+
 private:
     VkSwapchainKHR swapchain;
     uint32_t swapchainImageCount;
