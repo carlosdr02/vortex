@@ -76,7 +76,7 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
 
     bool doesNotSupportExtensions = true;
 
-    for (auto requiredExtension : requiredDeviceExtensions) {
+    for (const char* requiredExtension : requiredDeviceExtensions) {
         bool isExtensionAvailable = false;
 
         for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
@@ -230,7 +230,7 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
-    for (auto format : formats) {
+    for (VkFormat format : formats) {
         for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
             if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 surfaceFormat = surfaceFormats[i];
@@ -495,21 +495,24 @@ void Renderer::waitIdle(VkDevice device) {
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
+    VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
+
     VkSwapchainCreateInfoKHR swapchainCreateInfo = {
         .sType                 = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .pNext                 = nullptr,
         .flags                 = 0,
         .surface               = createInfo.surface,
-        .minImageCount         = createInfo.surfaceCapabilities->minImageCount,
-        .imageFormat           = createInfo.surfaceFormat.format,
-        .imageColorSpace       = createInfo.surfaceFormat.colorSpace,
-        .imageExtent           = createInfo.surfaceCapabilities->currentExtent,
+        .minImageCount         = surfaceCapabilities->minImageCount,
+        .imageFormat           = surfaceFormat.format,
+        .imageColorSpace       = surfaceFormat.colorSpace,
+        .imageExtent           = surfaceCapabilities->currentExtent,
         .imageArrayLayers      = 1,
         .imageUsage            = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices   = nullptr,
-        .preTransform          = createInfo.surfaceCapabilities->currentTransform,
+        .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
         .clipped               = VK_TRUE,
@@ -542,9 +545,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     // Create the storage images.
     storageImages = new VkImage[swapchainImageCount];
 
-    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
-
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
         VkImageCreateInfo imageCreateInfo = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext                 = nullptr,
