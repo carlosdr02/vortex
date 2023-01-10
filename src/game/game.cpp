@@ -8,6 +8,7 @@ Game::Game() {
 }
 
 Game::~Game() {
+    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
     device.destroy();
@@ -25,6 +26,7 @@ void Game::run() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        renderer.render(device);
     }
 }
 

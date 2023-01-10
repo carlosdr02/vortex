@@ -47,6 +47,9 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device, VkExtent2D extent);
+    bool render(Device& device);
+
+    void waitIdle(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
@@ -55,7 +58,8 @@ private:
     uint32_t framesInFlight;
     VkSemaphore* imageAcquiredSemaphores;
     VkSemaphore* renderFinishedSemaphores;
-    VkFence* fences;
+    VkFence* frameFences;
+    uint32_t frameIndex = 0;
 
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
@@ -65,6 +69,7 @@ private:
     VkImage* storageImages;
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
+    VkFence* imageFences;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);

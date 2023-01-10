@@ -277,7 +277,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Create the semaphores and fences.
     imageAcquiredSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    fences = new VkFence[framesInFlight];
+    frameFences = new VkFence[framesInFlight];
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         VkSemaphoreCreateInfo semaphoreCreateInfo = {
@@ -292,10 +292,10 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
         VkFenceCreateInfo fenceCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .pNext = nullptr,
-            .flags = 0
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
         };
 
-        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &fences[i]);
+        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
     }
 
     // Create the swapchain resources.
@@ -323,7 +323,7 @@ void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyFence(device, fences[i], nullptr);
+        vkDestroyFence(device, frameFences[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(device, imageAcquiredSemaphores[i], nullptr);
     };
@@ -331,7 +331,7 @@ void Renderer::destroy(VkDevice device) {
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
-    delete[] fences;
+    delete[] frameFences;
     delete[] renderFinishedSemaphores;
     delete[] imageAcquiredSemaphores;
 }
@@ -412,7 +412,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkExtent2D extent) {
 
         imageMemoryBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        imageMemoryBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_NONE;
         imageMemoryBarriers[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         imageMemoryBarriers[1].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -421,6 +421,77 @@ void Renderer::recordCommandBuffers(VkDevice device, VkExtent2D extent) {
 
         vkEndCommandBuffer(commandBuffers[i]);
     }
+}
+
+bool Renderer::render(Device& device) {
+    uint32_t imageIndex;
+
+    if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAcquiredSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+        return false;
+    }
+
+    VkSemaphoreSubmitInfo waitSemaphoreInfo = {
+        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext       = nullptr,
+        .semaphore   = imageAcquiredSemaphores[frameIndex],
+        .value       = 0,
+        .stageMask   = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .deviceIndex = 0
+    };
+
+    VkCommandBufferSubmitInfo commandBufferInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = commandBuffers[imageIndex],
+        .deviceMask    = 0
+    };
+
+    VkSemaphoreSubmitInfo signalSemaphoreInfo = {
+        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext       = nullptr,
+        .semaphore   = renderFinishedSemaphores[frameIndex],
+        .value       = 0,
+        .stageMask   = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .deviceIndex = 0
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext                    = nullptr,
+        .flags                    = 0,
+        .waitSemaphoreInfoCount   = 1,
+        .pWaitSemaphoreInfos      = &waitSemaphoreInfo,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &commandBufferInfo,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos    = &signalSemaphoreInfo
+    };
+
+    vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device.logical, 1, &frameFences[frameIndex]);
+
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, frameFences[frameIndex]);
+
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &swapchain,
+        .pImageIndices      = &imageIndex,
+        .pResults           = nullptr
+    };
+
+    vkQueuePresentKHR(device.renderQueue, &presentInfo);
+
+    frameIndex = (frameIndex + 1) % framesInFlight;
+
+    return true;
+}
+
+void Renderer::waitIdle(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -616,6 +687,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(device.renderQueue);
+
+    // Allocate host memory for the image fences.
+    imageFences = new VkFence[swapchainImageCount]();
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
@@ -631,6 +705,7 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
+    delete[] imageFences;
     delete[] storageImageViews;
     delete[] storageImages;
     delete[] commandBuffers;
