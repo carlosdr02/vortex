@@ -50,15 +50,16 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    VkCommandPool commandPool;
+
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+
+    VkCommandBuffer* commandBuffers;
 
     VkImage* storageImages;
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
-
-    VkCommandPool commandPool;
-    VkCommandBuffer* commandBuffers;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);

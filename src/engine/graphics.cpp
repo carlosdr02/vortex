@@ -420,6 +420,19 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     swapchainImages = new VkImage[swapchainImageCount];
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
+    // Allocate the command buffers.
+    commandBuffers = new VkCommandBuffer[swapchainImageCount];
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = swapchainImageCount
+    };
+
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
+
     // Create the storage images.
     storageImages = new VkImage[swapchainImageCount];
 
@@ -476,45 +489,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     delete[] bindImageMemoryInfos;
 
-    // Create the storage image views.
-    storageImageViews = new VkImageView[swapchainImageCount];
-
-    VkImageSubresourceRange imageSubresourceRange = {
-        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-        .baseMipLevel   = 0,
-        .levelCount     = 1,
-        .baseArrayLayer = 0,
-        .layerCount     = 1
-    };
-
-    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        VkImageViewCreateInfo imageViewCreateInfo = {
-            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext            = nullptr,
-            .flags            = 0,
-            .image            = storageImages[i],
-            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = VK_FORMAT_R16G16B16A16_SFLOAT,
-            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
-            .subresourceRange = imageSubresourceRange
-        };
-
-        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &storageImageViews[i]);
-    }
-
-    // Allocate the command buffers.
-    commandBuffers = new VkCommandBuffer[swapchainImageCount];
-
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .commandPool        = commandPool,
-        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = swapchainImageCount
-    };
-
-    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
-
     // Set the image layouts.
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -527,6 +501,14 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     uint32_t imageMemoryBarrierCount = 2 * swapchainImageCount;
     VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[imageMemoryBarrierCount];
+
+    VkImageSubresourceRange imageSubresourceRange = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel   = 0,
+        .levelCount     = 1,
+        .baseArrayLayer = 0,
+        .layerCount     = 1
+    };
 
     // Swapchain image memory barriers.
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -591,12 +573,29 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     };
 
     vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+    // Create the storage image views.
+    storageImageViews = new VkImageView[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = storageImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = VK_FORMAT_R16G16B16A16_SFLOAT,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = imageSubresourceRange
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &storageImageViews[i]);
+    }
+
     vkQueueWaitIdle(device.renderQueue);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
-    vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
-
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyImageView(device, storageImageViews[i], nullptr);
     }
@@ -607,8 +606,10 @@ void Renderer::destroySwapchainResources(VkDevice device) {
         vkDestroyImage(device, storageImages[i], nullptr);
     }
 
-    delete[] commandBuffers;
+    vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
+
     delete[] storageImageViews;
     delete[] storageImages;
+    delete[] commandBuffers;
     delete[] swapchainImages;
 }
