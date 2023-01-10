@@ -52,6 +52,11 @@ private:
     VkSwapchainKHR swapchain;
     VkCommandPool commandPool;
 
+    uint32_t framesInFlight;
+    VkSemaphore* imageAcquiredSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* fences;
+
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
 
