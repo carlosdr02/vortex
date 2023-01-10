@@ -561,19 +561,26 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkEndCommandBuffer(commandBuffers[0]);
 
-    VkSubmitInfo submitInfo = {
-        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext                = nullptr,
-        .waitSemaphoreCount   = 0,
-        .pWaitSemaphores      = nullptr,
-        .pWaitDstStageMask    = nullptr,
-        .commandBufferCount   = 1,
-        .pCommandBuffers      = &commandBuffers[0],
-        .signalSemaphoreCount = 0,
-        .pSignalSemaphores    = nullptr
+    VkCommandBufferSubmitInfo commandBufferInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = commandBuffers[0],
+        .deviceMask    = 0
     };
 
-    vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    VkSubmitInfo2 submitInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext                    = nullptr,
+        .flags                    = 0,
+        .waitSemaphoreInfoCount   = 0,
+        .pWaitSemaphoreInfos      = nullptr,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &commandBufferInfo,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos    = nullptr
+    };
+
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(device.renderQueue);
 }
 
