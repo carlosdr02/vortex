@@ -14,6 +14,7 @@ private:
     VkInstance instance;
     VkSurfaceKHR surface;
     Device device;
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
     Renderer renderer;
 
     void createWindow();

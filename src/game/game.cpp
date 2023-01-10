@@ -21,6 +21,8 @@ Game::~Game() {
 }
 
 void Game::run() {
+    renderer.recordCommandBuffers(device.logical, surfaceCapabilities.currentExtent);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
@@ -43,9 +45,11 @@ void Game::createEngineResources() {
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {
+    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
+
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
-        .surfaceCapabilities = device.getSurfaceCapabilities(surface, window),
+        .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = device.getSurfaceFormat(surface),
         .framesInFlight      = 3
     };

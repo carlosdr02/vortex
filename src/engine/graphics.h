@@ -34,7 +34,7 @@ public:
 
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
-    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     uint32_t framesInFlight;
 };
