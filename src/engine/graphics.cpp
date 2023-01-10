@@ -54,7 +54,7 @@ static bool isNotDiscrete(VkPhysicalDevice physicalDevice) {
     return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-static std::array<const char*, 4> getRequiredDeviceExtensions() {
+static auto getRequiredDeviceExtensions() {
     std::array<const char*, 4> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
@@ -66,7 +66,7 @@ static std::array<const char*, 4> getRequiredDeviceExtensions() {
 }
 
 static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
-    std::array<const char*, 4> requiredDeviceExtensions = getRequiredDeviceExtensions();
+    auto requiredDeviceExtensions = getRequiredDeviceExtensions();
 
     uint32_t extensionPropertyCount;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
@@ -76,11 +76,11 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
 
     bool doesNotSupportExtensions = true;
 
-    for (const char* requiredExtension : requiredDeviceExtensions) {
+    for (auto requiredExtension : requiredDeviceExtensions) {
         bool isExtensionAvailable = false;
 
-        for (uint32_t j = 0; j < extensionPropertyCount; ++j) {
-            if (strcmp(requiredExtension, extensionProperties[j].extensionName) == 0) {
+        for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
+            if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
                 isExtensionAvailable = true;
                 break;
             }
@@ -171,7 +171,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
-    std::array<const char*, 4> deviceExtensions = getRequiredDeviceExtensions();
+    auto deviceExtensions = getRequiredDeviceExtensions();
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -230,7 +230,7 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
 
     VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
 
-    for (VkFormat format : formats) {
+    for (auto format : formats) {
         for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
             if (format == surfaceFormats[i].format && surfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
                 surfaceFormat = surfaceFormats[i];
@@ -429,7 +429,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, commandBuffers);
 
-    // Set the storage image layouts.
+    // Set the image layouts.
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext            = nullptr,
@@ -448,8 +448,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         imageMemoryBarriers[i].pNext = nullptr;
         imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
         imageMemoryBarriers[i].srcAccessMask = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
         imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -464,8 +464,8 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         imageMemoryBarriers[i].pNext = nullptr;
         imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
         imageMemoryBarriers[i].srcAccessMask = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
