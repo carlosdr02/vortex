@@ -80,7 +80,7 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
         bool isExtensionAvailable = false;
 
         for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-            if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
+            if (std::strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
                 isExtensionAvailable = true;
                 break;
             }
@@ -361,31 +361,31 @@ void Renderer::recordCommandBuffers(VkDevice device, VkExtent2D extent) {
 
         VkImageMemoryBarrier2 imageMemoryBarriers[2];
 
-        imageMemoryBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        imageMemoryBarriers[0].pNext = nullptr;
-        imageMemoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-        imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        imageMemoryBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-        imageMemoryBarriers[0].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-        imageMemoryBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageMemoryBarriers[0].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageMemoryBarriers[0].pNext               = nullptr;
+        imageMemoryBarriers[0].srcStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarriers[0].srcAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        imageMemoryBarriers[0].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[0].dstAccessMask       = VK_ACCESS_2_TRANSFER_READ_BIT;
+        imageMemoryBarriers[0].oldLayout           = VK_IMAGE_LAYOUT_GENERAL;
+        imageMemoryBarriers[0].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         imageMemoryBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[0].image = storageImages[i];
-        imageMemoryBarriers[0].subresourceRange = imageSubresourceRange;
+        imageMemoryBarriers[0].image               = storageImages[i];
+        imageMemoryBarriers[0].subresourceRange    = imageSubresourceRange;
 
-        imageMemoryBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        imageMemoryBarriers[1].pNext = nullptr;
-        imageMemoryBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        imageMemoryBarriers[1].srcAccessMask = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-        imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        imageMemoryBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarriers[1].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageMemoryBarriers[1].pNext               = nullptr;
+        imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[1].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[1].dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        imageMemoryBarriers[1].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[1].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         imageMemoryBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[1].image = swapchainImages[i];
-        imageMemoryBarriers[1].subresourceRange = imageSubresourceRange;
+        imageMemoryBarriers[1].image               = swapchainImages[i];
+        imageMemoryBarriers[1].subresourceRange    = imageSubresourceRange;
 
         VkDependencyInfo dependencyInfo = {
             .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -431,19 +431,19 @@ void Renderer::recordCommandBuffers(VkDevice device, VkExtent2D extent) {
 
         vkCmdBlitImage2(commandBuffers[i], &blitImageInfo);
 
-        imageMemoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-        imageMemoryBarriers[0].dstStageMask = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        imageMemoryBarriers[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        imageMemoryBarriers[0].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        imageMemoryBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageMemoryBarriers[0].newLayout     = VK_IMAGE_LAYOUT_GENERAL;
 
-        imageMemoryBarriers[1].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-        imageMemoryBarriers[1].dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+        imageMemoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageMemoryBarriers[1].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        imageMemoryBarriers[1].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarriers[1].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         vkCmdPipelineBarrier2(commandBuffers[i], &dependencyInfo);
 
@@ -457,12 +457,6 @@ bool Renderer::render(Device& device) {
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAcquiredSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
-
-    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(device.logical, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
-    }
-
-    imageFences[imageIndex] = frameFences[frameIndex];
 
     VkSemaphoreSubmitInfo waitSemaphoreInfo = {
         .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -500,6 +494,12 @@ bool Renderer::render(Device& device) {
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos    = &signalSemaphoreInfo
     };
+
+    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device.logical, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+    imageFences[imageIndex] = frameFences[frameIndex];
 
     vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device.logical, 1, &frameFences[frameIndex]);
@@ -621,10 +621,10 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[swapchainImageCount];
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        bindImageMemoryInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-        bindImageMemoryInfos[i].pNext = nullptr;
-        bindImageMemoryInfos[i].image = storageImages[i];
-        bindImageMemoryInfos[i].memory = storageImagesMemory;
+        bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext        = nullptr;
+        bindImageMemoryInfos[i].image        = storageImages[i];
+        bindImageMemoryInfos[i].memory       = storageImagesMemory;
         bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
     }
 
@@ -671,18 +671,18 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[swapchainImageCount];
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
-        imageMemoryBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        imageMemoryBarriers[i].pNext = nullptr;
-        imageMemoryBarriers[i].srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-        imageMemoryBarriers[i].srcAccessMask = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[i].dstStageMask = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-        imageMemoryBarriers[i].dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        imageMemoryBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarriers[i].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+        imageMemoryBarriers[i].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageMemoryBarriers[i].pNext               = nullptr;
+        imageMemoryBarriers[i].srcStageMask        = VK_PIPELINE_STAGE_2_NONE;
+        imageMemoryBarriers[i].srcAccessMask       = VK_ACCESS_2_NONE;
+        imageMemoryBarriers[i].dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarriers[i].dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        imageMemoryBarriers[i].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageMemoryBarriers[i].newLayout           = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[i].image = storageImages[i];
-        imageMemoryBarriers[i].subresourceRange = imageSubresourceRange;
+        imageMemoryBarriers[i].image               = storageImages[i];
+        imageMemoryBarriers[i].subresourceRange    = imageSubresourceRange;
     }
 
     VkDependencyInfo dependencyInfo = {
