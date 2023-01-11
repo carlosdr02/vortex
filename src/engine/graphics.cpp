@@ -458,6 +458,12 @@ bool Renderer::render(Device& device) {
         return false;
     }
 
+    if (imageFences[imageIndex] != VK_NULL_HANDLE) {
+        vkWaitForFences(device.logical, 1, &imageFences[imageIndex], VK_TRUE, UINT64_MAX);
+    }
+
+    imageFences[imageIndex] = frameFences[frameIndex];
+
     VkSemaphoreSubmitInfo waitSemaphoreInfo = {
         .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .pNext       = nullptr,
