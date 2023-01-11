@@ -401,7 +401,35 @@ void Renderer::recordCommandBuffers(VkDevice device, VkExtent2D extent) {
 
         vkCmdPipelineBarrier2(commandBuffers[i], &dependencyInfo);
 
-        // Transfer images.
+        VkImageSubresourceLayers imageSubresourceLayers = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel       = 0,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
+
+        VkImageBlit2 imageBlit = {
+            .sType          = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+            .pNext          = nullptr,
+            .srcSubresource = imageSubresourceLayers,
+            .srcOffsets     = {{ 0, 0, 0 }, { static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height), 1 }},
+            .dstSubresource = imageSubresourceLayers,
+            .dstOffsets     = {{ 0, 0, 0 }, { static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height), 1 }}
+        };
+
+        VkBlitImageInfo2 blitImageInfo = {
+            .sType          = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+            .pNext          = nullptr,
+            .srcImage       = storageImages[i],
+            .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            .dstImage       = swapchainImages[i],
+            .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .regionCount    = 1,
+            .pRegions       = &imageBlit,
+            .filter         = VK_FILTER_NEAREST
+        };
+
+        vkCmdBlitImage2(commandBuffers[i], &blitImageInfo);
 
         imageMemoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
         imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
