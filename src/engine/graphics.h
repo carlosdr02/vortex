@@ -32,6 +32,19 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
+class Buffer {
+public:
+    VkDeviceMemory memory;
+
+    Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
+    void destroy(VkDevice device);
+
+    operator VkBuffer();
+
+private:
+    VkBuffer buffer;
+};
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;

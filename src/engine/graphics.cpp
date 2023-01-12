@@ -260,6 +260,48 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     return UINT32_MAX;
 }
 
+Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
+    // Create the buffer.
+    VkBufferCreateInfo bufferCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .size                  = size,
+        .usage                 = usage,
+        .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices   = nullptr
+    };
+
+    vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
+
+    // Allocate device memory.
+    VkMemoryRequirements memoryRequirements;
+    vkGetBufferMemoryRequirements(device.logical, buffer, &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, memoryProperties);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &memory);
+
+    vkBindBufferMemory(device.logical, buffer, memory, 0);
+}
+
+void Buffer::destroy(VkDevice device) {
+    vkFreeMemory(device, memory, nullptr);
+    vkDestroyBuffer(device, buffer, nullptr);
+}
+
+Buffer::operator VkBuffer() {
+    return buffer;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     // Create the swapchain.
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
