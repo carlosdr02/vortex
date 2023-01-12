@@ -316,6 +316,25 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
+    // Create the descriptor set layout.
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = nullptr,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &descriptorSetLayoutBinding
+    };
+
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
+
     // Create the semaphores and fences.
     imageAcquiredSemaphores = new VkSemaphore[framesInFlight];
     renderFinishedSemaphores = new VkSemaphore[framesInFlight];
@@ -370,6 +389,7 @@ void Renderer::destroy(VkDevice device) {
         vkDestroySemaphore(device, imageAcquiredSemaphores[i], nullptr);
     };
 
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
@@ -769,9 +789,69 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     // Allocate host memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
+
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSize = {
+        .type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .descriptorCount = 1
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = swapchainImageCount,
+        .poolSizeCount = 1,
+        .pPoolSizes    = &descriptorPoolSize
+    };
+
+    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Allocate the descriptor sets.
+    descriptorSets = new VkDescriptorSet[swapchainImageCount];
+
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(swapchainImageCount, descriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = swapchainImageCount,
+        .pSetLayouts        = descriptorSetLayouts.data()
+    };
+
+    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
+
+    // Update the descriptor sets.
+    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[swapchainImageCount];
+    VkDescriptorImageInfo* descriptorImageInfos = new VkDescriptorImageInfo[swapchainImageCount];
+
+    for (uint32_t i = 0; i < swapchainImageCount; ++i) {
+        descriptorImageInfos[i].sampler     = VK_NULL_HANDLE;
+        descriptorImageInfos[i].imageView   = storageImageViews[i];
+        descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[i].pNext            = nullptr;
+        writeDescriptorSets[i].dstSet           = descriptorSets[i];
+        writeDescriptorSets[i].dstBinding       = 0;
+        writeDescriptorSets[i].dstArrayElement  = 0;
+        writeDescriptorSets[i].descriptorCount  = 1;
+        writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[i].pImageInfo       = &descriptorImageInfos[i];
+        writeDescriptorSets[i].pBufferInfo      = nullptr;
+        writeDescriptorSets[i].pTexelBufferView = nullptr;
+    }
+
+    vkUpdateDescriptorSets(device.logical, swapchainImageCount, writeDescriptorSets, 0, nullptr);
+
+    delete[] descriptorImageInfos;
+    delete[] writeDescriptorSets;
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyImageView(device, storageImageViews[i], nullptr);
     }
@@ -784,6 +864,7 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
     vkFreeCommandBuffers(device, commandPool, swapchainImageCount, commandBuffers);
 
+    delete[] descriptorSets;
     delete[] imageFences;
     delete[] storageImageViews;
     delete[] storageImages;

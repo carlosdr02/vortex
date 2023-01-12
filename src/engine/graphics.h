@@ -67,6 +67,7 @@ public:
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool commandPool;
+    VkDescriptorSetLayout descriptorSetLayout;
 
     uint32_t framesInFlight;
     VkSemaphore* imageAcquiredSemaphores;
@@ -83,6 +84,9 @@ private:
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
     VkFence* imageFences;
+
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet* descriptorSets;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
