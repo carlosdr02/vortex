@@ -59,36 +59,39 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkExtent2D extent);
-    bool render(Device& device);
+    void recordCommandBuffers(VkDevice device);
+    bool render(Device& device, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
 
 private:
     VkSwapchainKHR swapchain;
-    VkCommandPool commandPool;
+    VkCommandPool framesCommandPool;
+    VkCommandPool imagesCommandPool;
     VkDescriptorSetLayout descriptorSetLayout;
-
-    uint32_t framesInFlight;
-    VkSemaphore* imageAcquiredSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
-    VkFence* frameFences;
-    uint32_t frameIndex = 0;
+    VkDescriptorPool descriptorPool;
 
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
 
-    VkCommandBuffer* commandBuffers;
+    uint32_t framesInFlight;
+
+    VkCommandBuffer* frameCommandBuffers;
+    VkCommandBuffer* imageCommandBuffers;
 
     VkImage* storageImages;
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
-    VkFence* imageFences;
 
-    VkDescriptorPool descriptorPool;
     VkDescriptorSet* descriptorSets;
 
-    void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+    VkSemaphore* imageAcquiredSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* frameFences;
+    VkFence* imageFences;
+
+    uint32_t frameIndex = 0;
+
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
 };

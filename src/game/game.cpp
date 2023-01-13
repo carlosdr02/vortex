@@ -22,11 +22,26 @@ Game::~Game() {
 }
 
 void Game::run() {
-    renderer.recordCommandBuffers(device.logical, surfaceCapabilities.currentExtent);
+    renderer.recordCommandBuffers(device.logical);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        renderer.render(device);
+
+        if (!renderer.render(device, surfaceCapabilities.currentExtent)) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+
+            while (width == 0 || height == 0) {
+                glfwWaitEvents();
+                glfwGetFramebufferSize(window, &width, &height);
+            }
+
+            RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
+
+            renderer.waitIdle(device.logical);
+            renderer.recreate(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical);
+        }
     }
 }
 
