@@ -333,7 +333,7 @@ static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo&
     return swapchain;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight), uniformDataSize(createInfo.uniformDataSize) {
     // Create the swapchain.
     swapchain = createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
@@ -352,37 +352,46 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &imagesCommandPool);
 
     // Create the descriptor set layout.
-    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
-        .binding            = 0,
-        .descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount    = 1,
-        .stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
-        .pImmutableSamplers = nullptr
-    };
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2];
+
+    descriptorSetLayoutBindings[0].binding            = 0;
+    descriptorSetLayoutBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorSetLayoutBindings[0].descriptorCount    = 1;
+    descriptorSetLayoutBindings[0].stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
+
+    descriptorSetLayoutBindings[1].binding            = 1;
+    descriptorSetLayoutBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorSetLayoutBindings[1].descriptorCount    = 1;
+    descriptorSetLayoutBindings[1].stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    descriptorSetLayoutBindings[1].pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
         .pNext        = nullptr,
         .flags        = 0,
-        .bindingCount = 1,
-        .pBindings    = &descriptorSetLayoutBinding
+        .bindingCount = COUNT_OF(descriptorSetLayoutBindings),
+        .pBindings    = descriptorSetLayoutBindings
     };
 
     vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
 
     // Create the descriptor pool.
-    VkDescriptorPoolSize descriptorPoolSize = {
-        .type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        .descriptorCount = 1
-    };
+    VkDescriptorPoolSize descriptorPoolSizes[2];
+
+    descriptorPoolSizes[0].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorPoolSizes[0].descriptorCount = 1;
+
+    descriptorPoolSizes[1].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorPoolSizes[1].descriptorCount = 1;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .pNext         = nullptr,
         .flags         = 0,
         .maxSets       = framesInFlight,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &descriptorPoolSize
+        .poolSizeCount = COUNT_OF(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
     };
 
     vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
@@ -405,6 +414,13 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, imageCommandBuffers);
 
+    // Create the uniform buffer.
+    uniformBuffer = Buffer(device, framesInFlight * uniformDataSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+    // Map the uniform buffer memory.
+    vkMapMemory(device.logical, uniformBuffer.memory, 0, VK_WHOLE_SIZE, 0, &uniformBufferData);
+
     // Allocate the descriptor sets.
     descriptorSets = new VkDescriptorSet[framesInFlight];
 
@@ -419,6 +435,32 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     };
 
     vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
+
+    // Update the descriptor sets.
+    VkDescriptorBufferInfo* descriptorBufferInfos = new VkDescriptorBufferInfo[framesInFlight];
+    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        descriptorBufferInfos[i].buffer = uniformBuffer;
+        descriptorBufferInfos[i].offset = i * uniformDataSize;
+        descriptorBufferInfos[i].range  = uniformDataSize;
+
+        writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[i].pNext            = nullptr;
+        writeDescriptorSets[i].dstSet           = descriptorSets[i];
+        writeDescriptorSets[i].dstBinding       = 1;
+        writeDescriptorSets[i].dstArrayElement  = 0;
+        writeDescriptorSets[i].descriptorCount  = 1;
+        writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSets[i].pImageInfo       = nullptr;
+        writeDescriptorSets[i].pBufferInfo      = &descriptorBufferInfos[i];
+        writeDescriptorSets[i].pTexelBufferView = nullptr;
+    }
+
+    vkUpdateDescriptorSets(device.logical, framesInFlight, writeDescriptorSets, 0, nullptr);
+
+    delete[] writeDescriptorSets;
+    delete[] descriptorBufferInfos;
 
     // Create the swapchain resources.
     storageImages = new VkImage[framesInFlight];
@@ -476,6 +518,8 @@ void Renderer::destroy(VkDevice device) {
     }
 
     destroySwapchainResources(device);
+
+    uniformBuffer.destroy(device);
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
@@ -875,6 +919,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
 
     // Allocate host memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
+
+    // Record the command buffers.
+    recordCommandBuffers(device.logical);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {

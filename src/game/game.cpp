@@ -22,8 +22,6 @@ Game::~Game() {
 }
 
 void Game::run() {
-    renderer.recordCommandBuffers(device.logical);
-
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -40,7 +38,6 @@ void Game::run() {
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical);
         }
     }
 }
@@ -68,7 +65,8 @@ RendererCreateInfo Game::getRendererCreateInfo() {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = device.getSurfaceFormat(surface),
-        .framesInFlight      = 3
+        .framesInFlight      = 3,
+        .uniformDataSize     = 128 // TODO
     };
 
     return rendererCreateInfo;

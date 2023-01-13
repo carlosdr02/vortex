@@ -36,6 +36,7 @@ class Buffer {
 public:
     VkDeviceMemory memory;
 
+    Buffer() = default;
     Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
     void destroy(VkDevice device);
 
@@ -50,6 +51,7 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     uint32_t framesInFlight;
+    VkDeviceSize uniformDataSize;
 };
 
 class Renderer {
@@ -82,6 +84,10 @@ private:
     VkImage* storageImages;
     VkDeviceMemory storageImagesMemory;
     VkImageView* storageImageViews;
+
+    Buffer uniformBuffer;
+    VkDeviceSize uniformDataSize;
+    void* uniformBufferData;
 
     VkDescriptorSet* descriptorSets;
 
