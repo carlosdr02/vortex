@@ -11,6 +11,8 @@ public:
     Interface() = default;
     Interface(GLFWwindow* window);
 
+    void update(float deltaTime);
+
 private:
     GLFWwindow* window;
 };

@@ -31,3 +31,11 @@ void Camera::orientate(float xPos, float yPos) {
 
     this->orientation = orientation;
 }
+
+vec3 Camera::getRightVector() {
+    return normalize(cross(orientation, vec3(0.0f, 1.0f, 0.0f)));
+}
+
+vec3 Camera::getForwardVector() {
+    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRightVector()));
+}

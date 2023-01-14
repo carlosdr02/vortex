@@ -23,8 +23,16 @@ Game::~Game() {
 }
 
 void Game::run() {
+    float lastFrame = 0.0f;
+
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = glfwGetTime();
+        float deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
         glfwPollEvents();
+
+        interface.update(deltaTime);
 
         if (!renderer.render(device, surfaceCapabilities.currentExtent)) {
             int width, height;
