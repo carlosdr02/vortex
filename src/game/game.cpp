@@ -5,6 +5,7 @@ Game::Game() {
 
     createWindow();
     createEngineResources();
+    interface = Interface(window);
 }
 
 Game::~Game() {
@@ -66,7 +67,7 @@ RendererCreateInfo Game::getRendererCreateInfo() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = device.getSurfaceFormat(surface),
         .framesInFlight      = 3,
-        .uniformDataSize     = 128 // TODO
+        .uniformDataSize     = 2 * sizeof(glm::mat4)
     };
 
     return rendererCreateInfo;

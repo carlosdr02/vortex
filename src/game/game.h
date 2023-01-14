@@ -1,6 +1,7 @@
 #pragma once
 
 #include <graphics.h>
+#include <interface.h>
 
 class Game {
 public:
@@ -16,6 +17,7 @@ private:
     Device device;
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     Renderer renderer;
+    Interface interface;
 
     void createWindow();
     void createEngineResources();
