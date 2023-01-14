@@ -16,4 +16,7 @@ public:
 
     glm::vec3 getRightVector();
     glm::vec3 getForwardVector();
+
+    glm::mat4 getInverseViewMatrix();
+    glm::mat4 getInverseProjectionMatrix(float aspectRatio);
 };

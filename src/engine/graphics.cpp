@@ -416,7 +416,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
 
     // Create the uniform buffer.
     uniformBuffer = Buffer(device, framesInFlight * uniformDataSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // Map the uniform buffer memory.
     vkMapMemory(device.logical, uniformBuffer.memory, 0, VK_WHOLE_SIZE, 0, &uniformBufferData);
@@ -556,7 +556,7 @@ void Renderer::recordCommandBuffers(VkDevice device) {
     }
 }
 
-bool Renderer::render(Device& device, VkExtent2D extent) {
+bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData) {
     uint32_t imageIndex;
 
     if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAcquiredSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -564,6 +564,9 @@ bool Renderer::render(Device& device, VkExtent2D extent) {
     }
 
     vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+
+    VkDeviceSize offset = frameIndex * uniformDataSize;
+    memcpy(static_cast<char*>(uniformBufferData) + offset, uniformData, uniformDataSize);
 
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,

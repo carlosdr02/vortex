@@ -23,6 +23,8 @@ Game::~Game() {
 }
 
 void Game::run() {
+    VkExtent2D extent = surfaceCapabilities.currentExtent;
+
     float lastFrame = 0.0f;
 
     while (!glfwWindowShouldClose(window)) {
@@ -34,7 +36,12 @@ void Game::run() {
 
         interface.update(deltaTime);
 
-        if (!renderer.render(device, surfaceCapabilities.currentExtent)) {
+        glm::mat4 cameraMatrices[] = {
+            interface.camera.getInverseViewMatrix(),
+            interface.camera.getInverseProjectionMatrix(extent.width / static_cast<float>(extent.height))
+        };
+
+        if (!renderer.render(device, extent, cameraMatrices)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 

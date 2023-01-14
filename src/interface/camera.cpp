@@ -1,5 +1,7 @@
 #include "camera.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 using namespace glm;
 
 void Camera::orientate(float xPos, float yPos) {
@@ -38,4 +40,12 @@ vec3 Camera::getRightVector() {
 
 vec3 Camera::getForwardVector() {
     return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRightVector()));
+}
+
+mat4 Camera::getInverseViewMatrix() {
+    return inverse(lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f)));
+}
+
+mat4 Camera::getInverseProjectionMatrix(float aspectRatio) {
+    return inverse(perspective(radians(fov), aspectRatio, nearPlane, farPlane));
 }

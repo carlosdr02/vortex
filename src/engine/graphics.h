@@ -62,7 +62,7 @@ public:
     void destroy(VkDevice device);
 
     void recordCommandBuffers(VkDevice device);
-    bool render(Device& device, VkExtent2D extent);
+    bool render(Device& device, VkExtent2D extent, const void* uniformData);
 
     void waitIdle(VkDevice device);
 
