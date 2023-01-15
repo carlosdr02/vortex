@@ -16,6 +16,8 @@ private:
     VkSurfaceKHR surface;
     Device device;
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    VkExtent2D extent;
+    VkSurfaceFormatKHR surfaceFormat;
     Renderer renderer;
     Interface interface;
 

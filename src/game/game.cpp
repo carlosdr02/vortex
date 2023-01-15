@@ -23,8 +23,6 @@ Game::~Game() {
 }
 
 void Game::run() {
-    VkExtent2D extent = surfaceCapabilities.currentExtent;
-
     float lastFrame = 0.0f;
 
     while (!glfwWindowShouldClose(window)) {
@@ -68,6 +66,7 @@ void Game::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
+    surfaceFormat = device.getSurfaceFormat(surface);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
@@ -76,11 +75,12 @@ void Game::createEngineResources() {
 
 RendererCreateInfo Game::getRendererCreateInfo() {
     surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
+    extent = surfaceCapabilities.currentExtent;
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
-        .surfaceFormat       = device.getSurfaceFormat(surface),
+        .surfaceFormat       = surfaceFormat,
         .framesInFlight      = 3,
         .uniformDataSize     = 2 * sizeof(glm::mat4)
     };
