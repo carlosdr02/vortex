@@ -764,7 +764,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .pNext                 = nullptr,
             .flags                 = 0,
             .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = VK_FORMAT_R16G16B16A16_SFLOAT,
+            .format                = VK_FORMAT_R32G32B32A32_SFLOAT,
             .extent                = { extent.width, extent.height, 1 },
             .mipLevels             = 1,
             .arrayLayers           = 1,
@@ -826,7 +826,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .flags            = 0,
             .image            = storageImages[i],
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = VK_FORMAT_R16G16B16A16_SFLOAT,
+            .format           = VK_FORMAT_R32G32B32A32_SFLOAT,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
             .subresourceRange = imageSubresourceRange
         };
