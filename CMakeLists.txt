@@ -23,7 +23,6 @@ TARGET_INCLUDE_DIRECTORIES(game PUBLIC src/game)
 
 # Interface
 ADD_LIBRARY(interface
-    src/interface/interface.cpp
     src/interface/camera.cpp
 )
 

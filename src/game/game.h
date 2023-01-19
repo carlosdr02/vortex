@@ -1,7 +1,7 @@
 #pragma once
 
 #include <graphics.h>
-#include <interface.h>
+#include <camera.h>
 
 class Game {
 public:
@@ -12,14 +12,14 @@ public:
 
 private:
     GLFWwindow* window;
+    Camera camera;
     VkInstance instance;
     VkSurfaceKHR surface;
     Device device;
+    VkSurfaceFormatKHR surfaceFormat;
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     VkExtent2D extent;
-    VkSurfaceFormatKHR surfaceFormat;
     Renderer renderer;
-    Interface interface;
 
     void createWindow();
     void createEngineResources();

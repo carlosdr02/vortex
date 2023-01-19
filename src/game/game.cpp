@@ -5,7 +5,6 @@ Game::Game() {
 
     createWindow();
     createEngineResources();
-    interface = Interface(window);
 }
 
 Game::~Game() {
@@ -32,11 +31,11 @@ void Game::run() {
 
         glfwPollEvents();
 
-        interface.update(deltaTime);
+        camera.update(window, deltaTime);
 
         glm::mat4 cameraMatrices[] = {
-            interface.camera.getInverseViewMatrix(),
-            interface.camera.getInverseProjectionMatrix(extent.width / static_cast<float>(extent.height))
+            camera.getInverseViewMatrix(),
+            camera.getInverseProjectionMatrix(static_cast<float>(extent.width) / extent.height)
         };
 
         if (!renderer.render(device, extent, cameraMatrices)) {
@@ -60,6 +59,10 @@ void Game::createWindow() {
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1600, 900, "Achantcraft", nullptr, nullptr);
+
+    glfwSetWindowUserPointer(window, &camera);
+
+    glfwSetCursorPosCallback(window, cursorPosCallback);
 }
 
 void Game::createEngineResources() {

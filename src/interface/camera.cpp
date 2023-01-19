@@ -1,10 +1,37 @@
 #include "camera.h"
 
+#include <algorithm>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace glm;
 
-void Camera::orientate(float xPos, float yPos) {
+void Camera::update(GLFWwindow* window, float deltaTime) {
+    if (glfwGetKey(window, GLFW_KEY_W)) translation += getForwardVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_A)) translation -= getRightVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_S)) translation -= getForwardVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_D)) translation += getRightVector() * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_SPACE)) translation += vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) translation -= vec3(0.0f, 1.0f, 0.0f) * speed * deltaTime;
+}
+
+mat4 Camera::getInverseViewMatrix() const {
+    return inverse(lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f)));
+}
+
+mat4 Camera::getInverseProjectionMatrix(float aspectRatio) const {
+    return inverse(perspective(radians(fov), aspectRatio, nearPlane, farPlane));
+}
+
+vec3 Camera::getRightVector() const {
+    return normalize(cross(orientation, vec3(0.0f, 1.0f, 0.0f)));
+}
+
+vec3 Camera::getForwardVector() const {
+    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRightVector()));
+}
+
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     static float xLast = xPos;
     static float yLast = yPos;
 
@@ -17,13 +44,15 @@ void Camera::orientate(float xPos, float yPos) {
     xLast = xPos;
     yLast = yPos;
 
-    xOffset *= sensitivity;
-    yOffset *= sensitivity;
+    Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+
+    xOffset *= camera->sensitivity;
+    yOffset *= camera->sensitivity;
 
     yaw += xOffset;
     pitch += yOffset;
 
-    pitch = clamp(pitch, -90.0f, 90.0f);
+    pitch = std::clamp(pitch, -90.0f, 90.0f);
 
     vec3 orientation = {
         cos(radians(yaw)) * cos(radians(pitch)),
@@ -31,21 +60,5 @@ void Camera::orientate(float xPos, float yPos) {
         sin(radians(yaw)) * cos(radians(pitch))
     };
 
-    this->orientation = orientation;
-}
-
-vec3 Camera::getRightVector() {
-    return normalize(cross(orientation, vec3(0.0f, 1.0f, 0.0f)));
-}
-
-vec3 Camera::getForwardVector() {
-    return normalize(cross(vec3(0.0f, 1.0f, 0.0f), getRightVector()));
-}
-
-mat4 Camera::getInverseViewMatrix() {
-    return inverse(lookAt(translation, translation + orientation, vec3(0.0f, 1.0f, 0.0f)));
-}
-
-mat4 Camera::getInverseProjectionMatrix(float aspectRatio) {
-    return inverse(perspective(radians(fov), aspectRatio, nearPlane, farPlane));
+    camera->orientation = normalize(orientation);
 }

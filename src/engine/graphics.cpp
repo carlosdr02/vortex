@@ -1,9 +1,8 @@
 #include "graphics.h"
 
-#include <cstring>
-
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <vector>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
