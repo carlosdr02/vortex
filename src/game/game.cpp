@@ -74,6 +74,7 @@ void Game::createEngineResources() {
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
     renderer = Renderer(device, rendererCreateInfo);
+    renderer.recordCommandBuffers(device.logical);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {

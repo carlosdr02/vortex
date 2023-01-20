@@ -1,8 +1,9 @@
 #include "graphics.h"
 
+#include <string.h>
+
 #include <algorithm>
 #include <array>
-#include <cstring>
 #include <vector>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
@@ -79,7 +80,7 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
         bool isExtensionAvailable = false;
 
         for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-            if (std::strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
+            if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
                 isExtensionAvailable = true;
                 break;
             }
@@ -289,6 +290,7 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
 
     vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &memory);
 
+    // Bind the buffer memory.
     vkBindBufferMemory(device.logical, buffer, memory, 0);
 }
 
@@ -586,6 +588,7 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
 
     VkImageMemoryBarrier2 imageMemoryBarriers[2];
 
+    // Storage image memory barrier.
     imageMemoryBarriers[0].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     imageMemoryBarriers[0].pNext               = nullptr;
     imageMemoryBarriers[0].srcStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
@@ -599,10 +602,11 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
     imageMemoryBarriers[0].image               = storageImages[frameIndex];
     imageMemoryBarriers[0].subresourceRange    = imageSubresourceRange;
 
+    // Swapchain image memory barrier.
     imageMemoryBarriers[1].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     imageMemoryBarriers[1].pNext               = nullptr;
-    imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE;
+    imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::waitSemaphoreInfo::stageMask.
+    imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE; // This image was just presented to the screen, so no srcAccessMask.
     imageMemoryBarriers[1].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     imageMemoryBarriers[1].dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
     imageMemoryBarriers[1].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -656,17 +660,21 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
 
     vkCmdBlitImage2(imageCommandBuffers[frameIndex], &blitImageInfo);
 
+    // Storage image memory barrier.
     imageMemoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+    imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE; // WAR hazard only needs an execution dependency.
     imageMemoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    // The layout transition is considered a write operation, so we do
+    // need the dstAccessMask to be correct or we would have a WAW hazard.
     imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
     imageMemoryBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     imageMemoryBarriers[0].newLayout     = VK_IMAGE_LAYOUT_GENERAL;
 
+    // Swapchain image memory barrier.
     imageMemoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
     imageMemoryBarriers[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    imageMemoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_NONE;
+    imageMemoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::signalSemaphoreInfo::stageMask.
+    imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_NONE; // This image is going to be presented to the screen, so no dstAccessMask.
     imageMemoryBarriers[1].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     imageMemoryBarriers[1].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
@@ -891,7 +899,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     };
 
     vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(device.renderQueue);
 
     // Update the descriptor sets.
     VkDescriptorImageInfo* descriptorImageInfos = new VkDescriptorImageInfo[framesInFlight];
@@ -922,8 +929,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     // Allocate host memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
 
-    // Record the command buffers.
-    recordCommandBuffers(device.logical);
+    vkQueueWaitIdle(device.renderQueue);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
