@@ -40,6 +40,8 @@ public:
     Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties);
     void destroy(VkDevice device);
 
+    VkDeviceAddress getDeviceAddress(VkDevice device);
+
     operator VkBuffer();
 
 private:

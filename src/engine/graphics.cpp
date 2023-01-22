@@ -154,9 +154,15 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
-    VkPhysicalDeviceVulkan13Features enabledFeatures = {
+    VkPhysicalDeviceVulkan12Features vulkan12Features = {
+        .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext               = nullptr,
+        .bufferDeviceAddress = VK_TRUE
+    };
+
+    VkPhysicalDeviceVulkan13Features vulkan13Features = {
         .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .pNext            = nullptr,
+        .pNext            = &vulkan12Features,
         .synchronization2 = VK_TRUE
     };
 
@@ -175,7 +181,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext                   = &enabledFeatures,
+        .pNext                   = &vulkan13Features,
         .flags                   = 0,
         .queueCreateInfoCount    = 1,
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
@@ -276,6 +282,13 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
     vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
 
     // Allocate device memory.
+    VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo = {
+        .sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+        .pNext      = nullptr,
+        .flags      = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+        .deviceMask = 0
+    };
+
     VkMemoryRequirements memoryRequirements;
     vkGetBufferMemoryRequirements(device.logical, buffer, &memoryRequirements);
 
@@ -283,7 +296,7 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
 
     VkMemoryAllocateInfo memoryAllocateInfo = {
         .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext           = nullptr,
+        .pNext           = usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT ? &memoryAllocateFlagsInfo : nullptr,
         .allocationSize  = memoryRequirements.size,
         .memoryTypeIndex = memoryTypeIndex
     };
@@ -297,6 +310,16 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
 void Buffer::destroy(VkDevice device) {
     vkFreeMemory(device, memory, nullptr);
     vkDestroyBuffer(device, buffer, nullptr);
+}
+
+VkDeviceAddress Buffer::getDeviceAddress(VkDevice device) {
+    VkBufferDeviceAddressInfo bufferDeviceAddressInfo = {
+        .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .pNext  = nullptr,
+        .buffer = buffer
+    };
+
+    return vkGetBufferDeviceAddress(device, &bufferDeviceAddressInfo);
 }
 
 Buffer::operator VkBuffer() {
