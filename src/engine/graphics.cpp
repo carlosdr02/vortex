@@ -154,9 +154,21 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     delete[] queueFamilyProperties;
 
     // Create the device.
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
+        .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+        .pNext                 = nullptr,
+        .accelerationStructure = VK_TRUE
+    };
+
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
+        .sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+        .pNext              = &accelerationStructureFeatures,
+        .rayTracingPipeline = VK_TRUE
+    };
+
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
         .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .pNext               = nullptr,
+        .pNext               = &rayTracingPipelineFeatures,
         .bufferDeviceAddress = VK_TRUE
     };
 
@@ -404,10 +416,10 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     VkDescriptorPoolSize descriptorPoolSizes[2];
 
     descriptorPoolSizes[0].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorPoolSizes[0].descriptorCount = 1;
+    descriptorPoolSizes[0].descriptorCount = framesInFlight;
 
     descriptorPoolSizes[1].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorPoolSizes[1].descriptorCount = 1;
+    descriptorPoolSizes[1].descriptorCount = framesInFlight;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
