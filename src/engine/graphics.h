@@ -83,9 +83,9 @@ private:
     VkCommandBuffer* frameCommandBuffers;
     VkCommandBuffer* imageCommandBuffers;
 
-    VkImage* storageImages;
-    VkDeviceMemory storageImagesMemory;
-    VkImageView* storageImageViews;
+    VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
 
     Buffer uniformBuffer;
     VkDeviceSize uniformDataSize;
