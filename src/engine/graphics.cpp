@@ -278,6 +278,99 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     return UINT32_MAX;
 }
 
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
+    VkAttachmentDescription2 attachmentDescription = {
+        .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
+        .pNext          = nullptr,
+        .flags          = 0,
+        .format         = colorFormat,
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
+        .finalLayout    = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+    };
+
+    VkAttachmentReference2 attachmentReference = {
+        .sType      = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
+        .pNext      = nullptr,
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
+    };
+
+    VkSubpassDescription2 subpassDescription = {
+        .sType                   = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .viewMask                = 0,
+        .inputAttachmentCount    = 0,
+        .pInputAttachments       = nullptr,
+        .colorAttachmentCount    = 1,
+        .pColorAttachments       = &attachmentReference,
+        .pResolveAttachments     = nullptr,
+        .pDepthStencilAttachment = nullptr,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments    = nullptr
+    };
+
+    VkMemoryBarrier2 memoryBarriers[2];
+
+    memoryBarriers[0].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarriers[0].pNext         = nullptr;
+    memoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    memoryBarriers[0].srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    memoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // This is used by VkAttachmentDescription2::loadOp (VK_ATTACHMENT_LOAD_OP_LOAD).
+    memoryBarriers[0].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+
+    memoryBarriers[1].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarriers[1].pNext         = nullptr;
+    memoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // This is used by VkAttachmentDescription2::storeOp (VK_ATTACHMENT_STORE_OP_STORE).
+    memoryBarriers[1].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    memoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    memoryBarriers[1].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+
+    VkSubpassDependency2 subpassDependencies[2]{};
+
+    subpassDependencies[0].sType           = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+    subpassDependencies[0].pNext           = &memoryBarriers[0];
+    subpassDependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+    subpassDependencies[0].dstSubpass      = 0;
+    subpassDependencies[0].dependencyFlags = 0;
+    subpassDependencies[0].viewOffset      = 0;
+
+    subpassDependencies[1].sType           = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+    subpassDependencies[1].pNext           = &memoryBarriers[1];
+    subpassDependencies[1].srcSubpass      = 0;
+    subpassDependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+    subpassDependencies[1].dependencyFlags = 0;
+    subpassDependencies[1].viewOffset      = 0;
+
+    VkRenderPassCreateInfo2 renderPassCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .attachmentCount         = 1,
+        .pAttachments            = &attachmentDescription,
+        .subpassCount            = 1,
+        .pSubpasses              = &subpassDescription,
+        .dependencyCount         = COUNT_OF(subpassDependencies),
+        .pDependencies           = subpassDependencies,
+        .correlatedViewMaskCount = 0,
+        .pCorrelatedViewMasks    = nullptr
+    };
+
+    VkRenderPass renderPass;
+    vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
+
+    return renderPass;
+}
+
 Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
     // Create the buffer.
     VkBufferCreateInfo bufferCreateInfo = {

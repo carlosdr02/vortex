@@ -32,6 +32,8 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
+VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
+
 class Buffer {
 public:
     VkDeviceMemory memory;
