@@ -623,33 +623,19 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
 
     VkImageMemoryBarrier2 imageMemoryBarriers[2];
 
-    // Off-screen image memory barrier.
+    // Swapchain image memory barrier.
     imageMemoryBarriers[0].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     imageMemoryBarriers[0].pNext               = nullptr;
-    imageMemoryBarriers[0].srcStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-    imageMemoryBarriers[0].srcAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    imageMemoryBarriers[0].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::waitSemaphoreInfo::stageMask.
+    imageMemoryBarriers[0].srcAccessMask       = VK_ACCESS_2_NONE; // This image was just acquired from the swapchain, so no srcAccessMask.
     imageMemoryBarriers[0].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[0].dstAccessMask       = VK_ACCESS_2_TRANSFER_READ_BIT;
-    imageMemoryBarriers[0].oldLayout           = VK_IMAGE_LAYOUT_GENERAL;
-    imageMemoryBarriers[0].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageMemoryBarriers[0].dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    imageMemoryBarriers[0].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageMemoryBarriers[0].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     imageMemoryBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageMemoryBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[0].image               = offscreenImages[frameIndex];
+    imageMemoryBarriers[0].image               = swapchainImages[imageIndex];
     imageMemoryBarriers[0].subresourceRange    = imageSubresourceRange;
-
-    // Swapchain image memory barrier.
-    imageMemoryBarriers[1].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    imageMemoryBarriers[1].pNext               = nullptr;
-    imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::waitSemaphoreInfo::stageMask.
-    imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE; // This image was just presented to the screen, so no srcAccessMask.
-    imageMemoryBarriers[1].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[1].dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    imageMemoryBarriers[1].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageMemoryBarriers[1].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageMemoryBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[1].image               = swapchainImages[imageIndex];
-    imageMemoryBarriers[1].subresourceRange    = imageSubresourceRange;
 
     VkDependencyInfo dependencyInfo = {
         .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -659,7 +645,7 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
         .pMemoryBarriers          = nullptr,
         .bufferMemoryBarrierCount = 0,
         .pBufferMemoryBarriers    = nullptr,
-        .imageMemoryBarrierCount  = COUNT_OF(imageMemoryBarriers),
+        .imageMemoryBarrierCount  = 1,
         .pImageMemoryBarriers     = imageMemoryBarriers
     };
 
@@ -695,23 +681,31 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
 
     vkCmdBlitImage2(imageCommandBuffers[frameIndex], &blitImageInfo);
 
-    // Off-screen image memory barrier.
-    imageMemoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE; // WAR hazard only needs an execution dependency.
-    imageMemoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-    // The layout transition is considered a write operation, so we do
-    // need the dstAccessMask to be correct or we would have a WAW hazard.
-    imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-    imageMemoryBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    imageMemoryBarriers[0].newLayout     = VK_IMAGE_LAYOUT_GENERAL;
-
     // Swapchain image memory barrier.
-    imageMemoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[1].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    imageMemoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::signalSemaphoreInfo::stageMask.
-    imageMemoryBarriers[1].dstAccessMask = VK_ACCESS_2_NONE; // This image is going to be presented to the screen, so no dstAccessMask.
-    imageMemoryBarriers[1].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageMemoryBarriers[1].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    imageMemoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    imageMemoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::signalSemaphoreInfo::stageMask.
+    imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_NONE; // This image is going to be presented to the screen, so no dstAccessMask.
+    imageMemoryBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarriers[0].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    // Off-screen image memory barrier.
+    imageMemoryBarriers[1].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    imageMemoryBarriers[1].pNext               = nullptr;
+    imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE; // WAR hazard only needs an execution dependency.
+    imageMemoryBarriers[1].dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    // The layout transition itself is considered a write operation though, so we do need the dstAccessMask
+    // to be correct or there would be a WAW hazard between the layout transition and the shader storage write.
+    imageMemoryBarriers[1].dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+    imageMemoryBarriers[1].oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    imageMemoryBarriers[1].newLayout           = VK_IMAGE_LAYOUT_GENERAL;
+    imageMemoryBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarriers[1].image               = offscreenImages[frameIndex];
+    imageMemoryBarriers[1].subresourceRange    = imageSubresourceRange;
+
+    dependencyInfo.imageMemoryBarrierCount = COUNT_OF(imageMemoryBarriers);
 
     vkCmdPipelineBarrier2(imageCommandBuffers[frameIndex], &dependencyInfo);
 
