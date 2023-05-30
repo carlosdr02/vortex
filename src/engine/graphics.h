@@ -32,7 +32,7 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat);
+VkRenderPass createRenderPass(VkDevice device);
 
 class Buffer {
 public:
@@ -54,6 +54,7 @@ struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
+    VkRenderPass renderPass;
     uint32_t framesInFlight;
     VkDeviceSize uniformDataSize;
 };
@@ -65,7 +66,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device);
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
     bool render(Device& device, VkExtent2D extent, const void* uniformData);
 
     void waitIdle(VkDevice device);
@@ -88,6 +89,8 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
+
+    VkFramebuffer* framebuffers;
 
     Buffer uniformBuffer;
     VkDeviceSize uniformDataSize;

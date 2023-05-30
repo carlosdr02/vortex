@@ -139,8 +139,10 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
+    VkQueueFlags queueFlags = VK_QUEUE_GRAPHICS_BIT & VK_QUEUE_COMPUTE_BIT;
+
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+        if ((queueFamilyProperties[i].queueFlags & queueFlags) == queueFlags) {
             VkBool32 surfaceSupported;
             vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
@@ -278,12 +280,12 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     return UINT32_MAX;
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
+VkRenderPass createRenderPass(VkDevice device) {
     VkAttachmentDescription2 attachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
         .flags          = 0,
-        .format         = colorFormat,
+        .format         = VK_FORMAT_R32G32B32A32_SFLOAT,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
         .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
@@ -319,18 +321,16 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat colorFormat) {
 
     VkMemoryBarrier2 memoryBarriers[2];
 
-    memoryBarriers[0].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarriers[0].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
     memoryBarriers[0].pNext         = nullptr;
     memoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
     memoryBarriers[0].srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
     memoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    // This is used by VkAttachmentDescription2::loadOp (VK_ATTACHMENT_LOAD_OP_LOAD).
     memoryBarriers[0].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
 
-    memoryBarriers[1].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memoryBarriers[1].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
     memoryBarriers[1].pNext         = nullptr;
     memoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    // This is used by VkAttachmentDescription2::storeOp (VK_ATTACHMENT_STORE_OP_STORE).
     memoryBarriers[1].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     memoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_TRANSFER_BIT;
     memoryBarriers[1].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
@@ -484,13 +484,13 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2];
 
     descriptorSetLayoutBindings[0].binding            = 0;
-    descriptorSetLayoutBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorSetLayoutBindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorSetLayoutBindings[0].descriptorCount    = 1;
     descriptorSetLayoutBindings[0].stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
     descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
 
     descriptorSetLayoutBindings[1].binding            = 1;
-    descriptorSetLayoutBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorSetLayoutBindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorSetLayoutBindings[1].descriptorCount    = 1;
     descriptorSetLayoutBindings[1].stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
     descriptorSetLayoutBindings[1].pImmutableSamplers = nullptr;
@@ -508,10 +508,10 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Create the descriptor pool.
     VkDescriptorPoolSize descriptorPoolSizes[2];
 
-    descriptorPoolSizes[0].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorPoolSizes[0].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSizes[0].descriptorCount = framesInFlight;
 
-    descriptorPoolSizes[1].type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorPoolSizes[1].type            = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorPoolSizes[1].descriptorCount = framesInFlight;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
@@ -577,7 +577,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
         writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[i].pNext            = nullptr;
         writeDescriptorSets[i].dstSet           = descriptorSets[i];
-        writeDescriptorSets[i].dstBinding       = 1;
+        writeDescriptorSets[i].dstBinding       = 0;
         writeDescriptorSets[i].dstArrayElement  = 0;
         writeDescriptorSets[i].descriptorCount  = 1;
         writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -594,6 +594,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Create the swapchain resources.
     offscreenImages = new VkImage[framesInFlight];
     offscreenImageViews = new VkImageView[framesInFlight];
+    framebuffers = new VkFramebuffer[framesInFlight];
 
     createSwapchainResources(device, createInfo);
 
@@ -660,13 +661,14 @@ void Renderer::destroy(VkDevice device) {
     delete[] renderFinishedSemaphores;
     delete[] imageAcquiredSemaphores;
     delete[] descriptorSets;
+    delete[] framebuffers;
     delete[] offscreenImages;
     delete[] offscreenImageViews;
     delete[] imageCommandBuffers;
     delete[] frameCommandBuffers;
 }
 
-void Renderer::recordCommandBuffers(VkDevice device) {
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent) {
     vkResetCommandPool(device, framesCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -679,7 +681,63 @@ void Renderer::recordCommandBuffers(VkDevice device) {
 
         vkBeginCommandBuffer(frameCommandBuffers[i], &commandBufferBeginInfo);
 
+        VkImageSubresourceRange imageSubresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
+
+        VkImageMemoryBarrier2 imageMemoryBarrier = {
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext               = nullptr,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+            .srcAccessMask       = VK_ACCESS_2_NONE,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = offscreenImages[i],
+            .subresourceRange    = imageSubresourceRange
+        };
+
+        VkDependencyInfo dependencyInfo = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext                    = nullptr,
+            .dependencyFlags          = 0,
+            .memoryBarrierCount       = 0,
+            .pMemoryBarriers          = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers    = nullptr,
+            .imageMemoryBarrierCount  = 1,
+            .pImageMemoryBarriers     = &imageMemoryBarrier
+        };
+
+        vkCmdPipelineBarrier2(frameCommandBuffers[i], &dependencyInfo);
+
         // TODO: Trace rays.
+
+        VkRect2D renderArea = {
+            .offset = { 0, 0 },
+            .extent = extent
+        };
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {
+            .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext           = nullptr,
+            .renderPass      = renderPass,
+            .framebuffer     = framebuffers[i],
+            .renderArea      = renderArea,
+            .clearValueCount = 0,
+            .pClearValues    = nullptr
+        };
+
+        vkCmdBeginRenderPass(frameCommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdEndRenderPass(frameCommandBuffers[i]);
 
         vkEndCommandBuffer(frameCommandBuffers[i]);
     }
@@ -714,21 +772,20 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
         .layerCount     = 1
     };
 
-    VkImageMemoryBarrier2 imageMemoryBarriers[2];
-
-    // Swapchain image memory barrier.
-    imageMemoryBarriers[0].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    imageMemoryBarriers[0].pNext               = nullptr;
-    imageMemoryBarriers[0].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::waitSemaphoreInfo::stageMask.
-    imageMemoryBarriers[0].srcAccessMask       = VK_ACCESS_2_NONE; // This image was just acquired from the swapchain, so no srcAccessMask.
-    imageMemoryBarriers[0].dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[0].dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    imageMemoryBarriers[0].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageMemoryBarriers[0].newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageMemoryBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[0].image               = swapchainImages[imageIndex];
-    imageMemoryBarriers[0].subresourceRange    = imageSubresourceRange;
+    VkImageMemoryBarrier2 imageMemoryBarrier = {
+        .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext               = nullptr,
+        .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .srcAccessMask       = VK_ACCESS_2_NONE,
+        .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image               = swapchainImages[imageIndex],
+        .subresourceRange    = imageSubresourceRange
+    };
 
     VkDependencyInfo dependencyInfo = {
         .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -739,7 +796,7 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
         .bufferMemoryBarrierCount = 0,
         .pBufferMemoryBarriers    = nullptr,
         .imageMemoryBarrierCount  = 1,
-        .pImageMemoryBarriers     = imageMemoryBarriers
+        .pImageMemoryBarriers     = &imageMemoryBarrier
     };
 
     vkCmdPipelineBarrier2(imageCommandBuffers[frameIndex], &dependencyInfo);
@@ -774,31 +831,12 @@ bool Renderer::render(Device& device, VkExtent2D extent, const void* uniformData
 
     vkCmdBlitImage2(imageCommandBuffers[frameIndex], &blitImageInfo);
 
-    // Swapchain image memory barrier.
-    imageMemoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-    imageMemoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT; // Matches VkSubmitInfo2::signalSemaphoreInfo::stageMask.
-    imageMemoryBarriers[0].dstAccessMask = VK_ACCESS_2_NONE; // This image is going to be presented to the screen, so no dstAccessMask.
-    imageMemoryBarriers[0].oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageMemoryBarriers[0].newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-    // Off-screen image memory barrier.
-    imageMemoryBarriers[1].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-    imageMemoryBarriers[1].pNext               = nullptr;
-    imageMemoryBarriers[1].srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    imageMemoryBarriers[1].srcAccessMask       = VK_ACCESS_2_NONE; // WAR hazard only needs an execution dependency.
-    imageMemoryBarriers[1].dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-    // The layout transition itself is considered a write operation though, so we do need the dstAccessMask
-    // to be correct or there would be a WAW hazard between the layout transition and the shader storage write.
-    imageMemoryBarriers[1].dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-    imageMemoryBarriers[1].oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    imageMemoryBarriers[1].newLayout           = VK_IMAGE_LAYOUT_GENERAL;
-    imageMemoryBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarriers[1].image               = offscreenImages[frameIndex];
-    imageMemoryBarriers[1].subresourceRange    = imageSubresourceRange;
-
-    dependencyInfo.imageMemoryBarrierCount = COUNT_OF(imageMemoryBarriers);
+    imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+    imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     vkCmdPipelineBarrier2(imageCommandBuffers[frameIndex], &dependencyInfo);
 
@@ -885,9 +923,9 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 
     // Create the off-screen images.
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
 
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
         VkImageCreateInfo imageCreateInfo = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .pNext                 = nullptr,
@@ -963,65 +1001,6 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
     }
 
-    // Set the off-screen image layouts.
-    VkCommandBufferBeginInfo commandBufferBeginInfo = {
-        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .pNext            = nullptr,
-        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-        .pInheritanceInfo = nullptr
-    };
-
-    vkBeginCommandBuffer(imageCommandBuffers[0], &commandBufferBeginInfo);
-
-    VkImageMemoryBarrier2* imageMemoryBarriers = new VkImageMemoryBarrier2[framesInFlight];
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        imageMemoryBarriers[i].sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        imageMemoryBarriers[i].pNext               = nullptr;
-        imageMemoryBarriers[i].srcStageMask        = VK_PIPELINE_STAGE_2_NONE;
-        imageMemoryBarriers[i].srcAccessMask       = VK_ACCESS_2_NONE;
-        imageMemoryBarriers[i].dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-        imageMemoryBarriers[i].dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-        imageMemoryBarriers[i].oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarriers[i].newLayout           = VK_IMAGE_LAYOUT_GENERAL;
-        imageMemoryBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarriers[i].image               = offscreenImages[i];
-        imageMemoryBarriers[i].subresourceRange    = imageSubresourceRange;
-    }
-
-    VkDependencyInfo dependencyInfo = {
-        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .pNext                    = nullptr,
-        .dependencyFlags          = 0,
-        .memoryBarrierCount       = 0,
-        .pMemoryBarriers          = nullptr,
-        .bufferMemoryBarrierCount = 0,
-        .pBufferMemoryBarriers    = nullptr,
-        .imageMemoryBarrierCount  = framesInFlight,
-        .pImageMemoryBarriers     = imageMemoryBarriers
-    };
-
-    vkCmdPipelineBarrier2(imageCommandBuffers[0], &dependencyInfo);
-
-    delete[] imageMemoryBarriers;
-
-    vkEndCommandBuffer(imageCommandBuffers[0]);
-
-    VkSubmitInfo submitInfo = {
-        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext                = nullptr,
-        .waitSemaphoreCount   = 0,
-        .pWaitSemaphores      = nullptr,
-        .pWaitDstStageMask    = nullptr,
-        .commandBufferCount   = 1,
-        .pCommandBuffers      = &imageCommandBuffers[0],
-        .signalSemaphoreCount = 0,
-        .pSignalSemaphores    = nullptr
-    };
-
-    vkQueueSubmit(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
     // Update the descriptor sets.
     VkDescriptorImageInfo* descriptorImageInfos = new VkDescriptorImageInfo[framesInFlight];
     VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[framesInFlight];
@@ -1034,7 +1013,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
         writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[i].pNext            = nullptr;
         writeDescriptorSets[i].dstSet           = descriptorSets[i];
-        writeDescriptorSets[i].dstBinding       = 0;
+        writeDescriptorSets[i].dstBinding       = 1;
         writeDescriptorSets[i].dstArrayElement  = 0;
         writeDescriptorSets[i].descriptorCount  = 1;
         writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -1048,14 +1027,30 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
     delete[] writeDescriptorSets;
     delete[] descriptorImageInfos;
 
+    // Create the framebuffers.
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkFramebufferCreateInfo framebufferCreateInfo = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext           = nullptr,
+            .flags           = 0,
+            .renderPass      = createInfo.renderPass,
+            .attachmentCount = 1,
+            .pAttachments    = &offscreenImageViews[i],
+            .width           = extent.width,
+            .height          = extent.height,
+            .layers          = 1
+        };
+
+        vkCreateFramebuffer(device.logical, &framebufferCreateInfo, nullptr, &framebuffers[i]);
+    }
+
     // Allocate host memory for the image fences.
     imageFences = new VkFence[swapchainImageCount]();
-
-    vkQueueWaitIdle(device.renderQueue);
 }
 
 void Renderer::destroySwapchainResources(VkDevice device) {
     for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, offscreenImageViews[i], nullptr);
     }
 

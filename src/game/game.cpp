@@ -11,6 +11,8 @@ Game::~Game() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
+    vkDestroyRenderPass(device.logical, renderPass, nullptr);
+
     device.destroy();
 
     vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -51,6 +53,7 @@ void Game::run() {
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical, renderPass, extent);
         }
     }
 }
@@ -70,11 +73,12 @@ void Game::createEngineResources() {
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
     surfaceFormat = device.getSurfaceFormat(surface);
+    renderPass = createRenderPass(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
     renderer = Renderer(device, rendererCreateInfo);
-    renderer.recordCommandBuffers(device.logical);
+    renderer.recordCommandBuffers(device.logical, renderPass, extent);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {
@@ -85,6 +89,7 @@ RendererCreateInfo Game::getRendererCreateInfo() {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
+        .renderPass          = renderPass,
         .framesInFlight      = 3,
         .uniformDataSize     = 2 * sizeof(glm::mat4)
     };
