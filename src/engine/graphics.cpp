@@ -448,6 +448,179 @@ VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLay
     return pipelineLayout;
 }
 
+static VkShaderModule createShaderModule(VkDevice device, const char* shaderPath) {
+    FILE* file;
+    fopen_s(&file, shaderPath, "rb");
+
+    fseek(file, 0L, SEEK_END);
+    size_t codeSize = ftell(file);
+    fseek(file, 0L, SEEK_SET);
+
+    uint32_t* code = new uint32_t[codeSize];
+    fread(code, 1, codeSize, file);
+
+    fclose(file);
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext    = nullptr,
+        .flags    = 0,
+        .codeSize = codeSize,
+        .pCode    = code
+    };
+
+    VkShaderModule shaderModule;
+    vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule);
+
+    delete[] code;
+
+    return shaderModule;
+}
+
+VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo) {
+    VkShaderModule vertexShaderModule = createShaderModule(device, createInfo.vertexShaderPath);
+    VkShaderModule fragmentShaderModule = createShaderModule(device, createInfo.fragmentShaderPath);
+
+    VkPipelineShaderStageCreateInfo shaderStageCreateInfos[2];
+
+    shaderStageCreateInfos[0].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageCreateInfos[0].pNext               = nullptr;
+    shaderStageCreateInfos[0].flags               = 0;
+    shaderStageCreateInfos[0].stage               = VK_SHADER_STAGE_VERTEX_BIT;
+    shaderStageCreateInfos[0].module              = vertexShaderModule;
+    shaderStageCreateInfos[0].pName               = "main";
+    shaderStageCreateInfos[0].pSpecializationInfo = nullptr;
+
+    shaderStageCreateInfos[1].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageCreateInfos[1].pNext               = nullptr;
+    shaderStageCreateInfos[1].flags               = 0;
+    shaderStageCreateInfos[1].stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderStageCreateInfos[1].module              = fragmentShaderModule;
+    shaderStageCreateInfos[1].pName               = "main";
+    shaderStageCreateInfos[1].pSpecializationInfo = nullptr;
+
+    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
+        .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .pNext                           = nullptr,
+        .flags                           = 0,
+        .vertexBindingDescriptionCount   = 0,
+        .pVertexBindingDescriptions      = nullptr,
+        .vertexAttributeDescriptionCount = 0,
+        .pVertexAttributeDescriptions    = nullptr
+    };
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .pNext                  = nullptr,
+        .flags                  = 0,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE
+    };
+
+    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .viewportCount = 1,
+        .pViewports    = nullptr,
+        .scissorCount  = 1,
+        .pScissors     = nullptr
+    };
+
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_FALSE,
+        .depthBiasConstantFactor = 0.0f,
+        .depthBiasClamp          = 0.0f,
+        .depthBiasSlopeFactor    = 0.0f,
+        .lineWidth               = 1.0f
+    };
+
+    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .pNext                 = nullptr,
+        .flags                 = 0,
+        .rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable   = VK_FALSE,
+        .minSampleShading      = 0.0f,
+        .pSampleMask           = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable      = VK_FALSE
+    };
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {
+        .blendEnable         = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp        = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
+        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+    };
+
+    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .pNext           = nullptr,
+        .flags           = 0,
+        .logicOpEnable   = VK_FALSE,
+        .logicOp         = VK_LOGIC_OP_CLEAR,
+        .attachmentCount = 1,
+        .pAttachments    = &colorBlendAttachmentState,
+        .blendConstants  = { 0.0f }
+    };
+
+    VkDynamicState dynamicStates[] = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext             = nullptr,
+        .flags             = 0,
+        .dynamicStateCount = COUNT_OF(dynamicStates),
+        .pDynamicStates    = dynamicStates
+    };
+
+    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext               = nullptr,
+        .flags               = 0,
+        .stageCount          = COUNT_OF(shaderStageCreateInfos),
+        .pStages             = shaderStageCreateInfos,
+        .pVertexInputState   = &vertexInputStateCreateInfo,
+        .pInputAssemblyState = &inputAssemblyStateCreateInfo,
+        .pTessellationState  = nullptr,
+        .pViewportState      = &viewportStateCreateInfo,
+        .pRasterizationState = &rasterizationStateCreateInfo,
+        .pMultisampleState   = &multisampleStateCreateInfo,
+        .pDepthStencilState  = nullptr,
+        .pColorBlendState    = &colorBlendStateCreateInfo,
+        .pDynamicState       = &dynamicStateCreateInfo,
+        .layout              = createInfo.pipelineLayout,
+        .renderPass          = createInfo.renderPass,
+        .subpass             = 0,
+        .basePipelineHandle  = VK_NULL_HANDLE,
+        .basePipelineIndex   = -1
+    };
+
+    VkPipeline graphicsPipeline;
+    vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &graphicsPipeline);
+
+    vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
+    vkDestroyShaderModule(device, vertexShaderModule, nullptr);
+
+    return graphicsPipeline;
+}
+
 static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -468,7 +641,7 @@ static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo&
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
+        .presentMode           = VK_PRESENT_MODE_MAILBOX_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };
