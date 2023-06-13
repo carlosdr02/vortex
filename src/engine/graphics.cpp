@@ -431,6 +431,23 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = nullptr,
+        .flags                  = 0,
+        .setLayoutCount         = descriptorSetLayoutCount,
+        .pSetLayouts            = descriptorSetLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr
+    };
+
+    VkPipelineLayout pipelineLayout;
+    vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+
+    return pipelineLayout;
+}
+
 static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
