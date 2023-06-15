@@ -285,7 +285,7 @@ VkRenderPass createRenderPass(VkDevice device) {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
         .flags          = 0,
-        .format         = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .format         = VK_FORMAT_R16G16B16A16_SFLOAT,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
         .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1121,7 +1121,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .pNext                 = nullptr,
             .flags                 = 0,
             .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = VK_FORMAT_R32G32B32A32_SFLOAT,
+            .format                = VK_FORMAT_R16G16B16A16_SFLOAT,
             .extent                = { extent.width, extent.height, 1 },
             .mipLevels             = 1,
             .arrayLayers           = 1,
@@ -1183,7 +1183,7 @@ void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo
             .flags            = 0,
             .image            = offscreenImages[i],
             .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-            .format           = VK_FORMAT_R32G32B32A32_SFLOAT,
+            .format           = VK_FORMAT_R16G16B16A16_SFLOAT,
             .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
             .subresourceRange = imageSubresourceRange
         };
