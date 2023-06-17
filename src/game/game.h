@@ -19,7 +19,6 @@ private:
     VkSurfaceFormatKHR surfaceFormat;
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     VkExtent2D extent;
-    VkRenderPass renderPass;
     Renderer renderer;
 
     void createWindow();

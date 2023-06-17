@@ -32,8 +32,6 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
-VkRenderPass createRenderPass(VkDevice device);
-
 class Buffer {
 public:
     VkDeviceMemory memory;
@@ -50,22 +48,10 @@ private:
     VkBuffer buffer;
 };
 
-VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts);
-
-struct GraphicsPipelineCreateInfo {
-    const char* vertexShaderPath;
-    const char* fragmentShaderPath;
-    VkPipelineLayout pipelineLayout;
-    VkRenderPass renderPass;
-};
-
-VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
-
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
-    VkRenderPass renderPass;
     uint32_t framesInFlight;
     VkDeviceSize uniformDataSize;
 };
@@ -77,44 +63,24 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
-    bool render(Device& device, VkExtent2D extent, const void* uniformData);
-
-    void waitIdle(VkDevice device);
-
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool framesCommandPool;
     VkCommandPool imagesCommandPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorPool descriptorPool;
-
-    uint32_t swapchainImageCount;
-    VkImage* swapchainImages;
-
     uint32_t framesInFlight;
-
     VkCommandBuffer* frameCommandBuffers;
     VkCommandBuffer* imageCommandBuffers;
-
-    VkImage* offscreenImages;
-    VkDeviceMemory offscreenImagesMemory;
-    VkImageView* offscreenImageViews;
-
-    VkFramebuffer* framebuffers;
-
+    VkDescriptorSet* descriptorSets;
     Buffer uniformBuffer;
     VkDeviceSize uniformDataSize;
     void* uniformBufferData;
-
-    VkDescriptorSet* descriptorSets;
-
-    VkSemaphore* imageAcquiredSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
-    VkFence* frameFences;
-    VkFence* imageFences;
-
-    uint32_t frameIndex = 0;
+    VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
+    uint32_t swapchainImageCount;
+    VkImage* swapchainImages;
 
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);

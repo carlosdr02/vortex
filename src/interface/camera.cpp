@@ -35,7 +35,7 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     static float xLast = xPos;
     static float yLast = yPos;
 
-    static float yaw = 0.0f;
+    static float yaw = -90.0f;
     static float pitch = 0.0f;
 
     float xOffset = xPos - xLast;
