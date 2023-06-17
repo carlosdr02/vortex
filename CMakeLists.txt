@@ -49,9 +49,6 @@ ADD_SUBDIRECTORY(dependencies/glm)
 
 TARGET_LINK_LIBRARIES(interface glm)
 
-# STB
-TARGET_INCLUDE_DIRECTORIES(game PUBLIC dependencies/stb)
-
 # Executable
 ADD_EXECUTABLE(achantcraft src/main.cpp)
 

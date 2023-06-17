@@ -503,6 +503,30 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     offscreenImageViews = new VkImageView[framesInFlight];
 
     createSwapchainResources(device, createInfo);
+
+    // Create the fences and semaphores.
+    frameFences = new VkFence[framesInFlight];
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &frameFences[i]);
+
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+    }
 }
 
 void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
@@ -523,6 +547,12 @@ void Renderer::recreate(Device& device, const RendererCreateInfo& createInfo) {
 }
 
 void Renderer::destroy(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(device, frameFences[i], nullptr);
+    }
+
     destroySwapchainResources(device);
 
     uniformBuffer.destroy(device);
@@ -533,11 +563,237 @@ void Renderer::destroy(VkDevice device) {
     vkDestroyCommandPool(device, framesCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
+    delete[] renderFinishedSemaphores;
+    delete[] imageAvailableSemaphores;
+    delete[] frameFences;
     delete[] offscreenImageViews;
     delete[] offscreenImages;
     delete[] descriptorSets;
     delete[] imageCommandBuffers;
     delete[] frameCommandBuffers;
+}
+
+void Renderer::recordCommandBuffers(VkDevice device) {
+    vkResetCommandPool(device, framesCommandPool, 0);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        vkBeginCommandBuffer(frameCommandBuffers[i], &commandBufferBeginInfo);
+
+        VkImageMemoryBarrier2 imageMemoryBarrier = {
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext               = nullptr,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+            .srcAccessMask       = VK_ACCESS_2_NONE, // WAR hazard only needs an execution dependency.
+            .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = offscreenImages[i],
+            .subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        };
+
+        VkDependencyInfo dependencyInfo = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext                    = nullptr,
+            .dependencyFlags          = 0,
+            .memoryBarrierCount       = 0,
+            .pMemoryBarriers          = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers    = nullptr,
+            .imageMemoryBarrierCount  = 1,
+            .pImageMemoryBarriers     = &imageMemoryBarrier
+        };
+
+        vkCmdPipelineBarrier2(frameCommandBuffers[i], &dependencyInfo);
+
+        // TODO: Trace rays.
+
+        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+        imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
+        imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+        vkCmdPipelineBarrier2(frameCommandBuffers[i], &dependencyInfo);
+
+        vkEndCommandBuffer(frameCommandBuffers[i]);
+    }
+}
+
+bool Renderer::render(Device& device, const void* uniformData, VkExtent2D extent) {
+    uint32_t imageIndex;
+
+    if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+        return false;
+    }
+
+    vkWaitForFences(device.logical, 1, &frameFences[frameIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device.logical, 1, &frameFences[frameIndex]);
+
+    VkDeviceSize offset = frameIndex * uniformDataSize;
+    memcpy(static_cast<char*>(uniformBufferData) + offset, uniformData, uniformDataSize);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(imageCommandBuffers[frameIndex], &commandBufferBeginInfo);
+
+    VkImageMemoryBarrier2 imageMemoryBarrier = {
+        .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext               = nullptr,
+        .srcStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .srcAccessMask       = VK_ACCESS_2_NONE,
+        .dstStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image               = swapchainImages[imageIndex],
+        .subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+    };
+
+    VkDependencyInfo dependencyInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext                    = nullptr,
+        .dependencyFlags          = 0,
+        .memoryBarrierCount       = 0,
+        .pMemoryBarriers          = nullptr,
+        .bufferMemoryBarrierCount = 0,
+        .pBufferMemoryBarriers    = nullptr,
+        .imageMemoryBarrierCount  = 1,
+        .pImageMemoryBarriers     = &imageMemoryBarrier
+    };
+
+    vkCmdPipelineBarrier2(imageCommandBuffers[frameIndex], &dependencyInfo);
+
+    VkImageSubresourceLayers imageSubresourceLayers = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .mipLevel       = 0,
+        .baseArrayLayer = 0,
+        .layerCount     = 1
+    };
+
+    VkImageBlit2 imageBlit = {
+        .sType          = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext          = nullptr,
+        .srcSubresource = imageSubresourceLayers,
+        .srcOffsets     = { { 0, 0, 0 }, { static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height), 1 } },
+        .dstSubresource = imageSubresourceLayers,
+        .dstOffsets     = { { 0, static_cast<int32_t>(extent.height), 0 }, { static_cast<int32_t>(extent.width), 0, 1 } }
+    };
+
+    VkBlitImageInfo2 blitImageInfo = {
+        .sType          = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext          = nullptr,
+        .srcImage       = offscreenImages[frameIndex],
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage       = swapchainImages[imageIndex],
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount    = 1,
+        .pRegions       = &imageBlit,
+        .filter         = VK_FILTER_NEAREST
+    };
+
+    vkCmdBlitImage2(imageCommandBuffers[frameIndex], &blitImageInfo);
+
+    imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_NONE;
+    imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    vkCmdPipelineBarrier2(imageCommandBuffers[frameIndex], &dependencyInfo);
+
+    vkEndCommandBuffer(imageCommandBuffers[frameIndex]);
+
+    VkSemaphoreSubmitInfo semaphoreSubmitInfos[2];
+
+    semaphoreSubmitInfos[0].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    semaphoreSubmitInfos[0].pNext       = nullptr;
+    semaphoreSubmitInfos[0].semaphore   = imageAvailableSemaphores[frameIndex];
+    semaphoreSubmitInfos[0].value       = 0;
+    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    semaphoreSubmitInfos[0].deviceIndex = 0;
+
+    semaphoreSubmitInfos[1].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    semaphoreSubmitInfos[1].pNext       = nullptr;
+    semaphoreSubmitInfos[1].semaphore   = renderFinishedSemaphores[frameIndex];
+    semaphoreSubmitInfos[1].value       = 0;
+    semaphoreSubmitInfos[1].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    semaphoreSubmitInfos[1].deviceIndex = 0;
+
+    VkCommandBufferSubmitInfo commandBufferSubmitInfos[2];
+
+    commandBufferSubmitInfos[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    commandBufferSubmitInfos[0].pNext         = nullptr;
+    commandBufferSubmitInfos[0].commandBuffer = frameCommandBuffers[frameIndex];
+    commandBufferSubmitInfos[0].deviceMask    = 0;
+
+    commandBufferSubmitInfos[1].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    commandBufferSubmitInfos[1].pNext         = nullptr;
+    commandBufferSubmitInfos[1].commandBuffer = imageCommandBuffers[frameIndex];
+    commandBufferSubmitInfos[1].deviceMask    = 0;
+
+    VkSubmitInfo2 submitInfos[2];
+
+    submitInfos[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfos[0].pNext                    = nullptr;
+    submitInfos[0].flags                    = 0;
+    submitInfos[0].waitSemaphoreInfoCount   = 0;
+    submitInfos[0].pWaitSemaphoreInfos      = nullptr;
+    submitInfos[0].commandBufferInfoCount   = 1;
+    submitInfos[0].pCommandBufferInfos      = &commandBufferSubmitInfos[0];
+    submitInfos[0].signalSemaphoreInfoCount = 0;
+    submitInfos[0].pSignalSemaphoreInfos    = nullptr;
+
+    submitInfos[1].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfos[1].pNext                    = nullptr;
+    submitInfos[1].flags                    = 0;
+    submitInfos[1].waitSemaphoreInfoCount   = 1;
+    submitInfos[1].pWaitSemaphoreInfos      = &semaphoreSubmitInfos[0];
+    submitInfos[1].commandBufferInfoCount   = 1;
+    submitInfos[1].pCommandBufferInfos      = &commandBufferSubmitInfos[1];
+    submitInfos[1].signalSemaphoreInfoCount = 1;
+    submitInfos[1].pSignalSemaphoreInfos    = &semaphoreSubmitInfos[1];
+
+    vkQueueSubmit2(device.renderQueue, COUNT_OF(submitInfos), submitInfos, frameFences[frameIndex]);
+
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext              = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[frameIndex],
+        .swapchainCount     = 1,
+        .pSwapchains        = &swapchain,
+        .pImageIndices      = &imageIndex,
+        .pResults           = nullptr
+    };
+
+    vkQueuePresentKHR(device.renderQueue, &presentInfo);
+
+    frameIndex = (frameIndex + 1) % framesInFlight;
+
+    return true;
+}
+
+void Renderer::waitIdle(VkDevice device) {
+    vkWaitForFences(device, framesInFlight, frameFences, VK_TRUE, UINT64_MAX);
 }
 
 void Renderer::createSwapchainResources(Device& device, const RendererCreateInfo& createInfo) {

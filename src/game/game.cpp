@@ -8,6 +8,7 @@ Game::Game() {
 }
 
 Game::~Game() {
+    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
     device.destroy();
 
@@ -36,7 +37,7 @@ void Game::run() {
             camera.getInverseProjectionMatrix(static_cast<float>(extent.width) / extent.height)
         };
 
-        if (false) {
+        if (!renderer.render(device, cameraMatrices, extent)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -47,7 +48,9 @@ void Game::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
+            renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical);
         }
     }
 }
@@ -71,6 +74,7 @@ void Game::createEngineResources() {
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
 
     renderer = Renderer(device, rendererCreateInfo);
+    renderer.recordCommandBuffers(device.logical);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {

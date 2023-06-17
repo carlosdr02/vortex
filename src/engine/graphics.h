@@ -63,6 +63,10 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
+    void recordCommandBuffers(VkDevice device);
+    bool render(Device& device, const void* uniformData, VkExtent2D extent);
+    void waitIdle(VkDevice device);
+
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool framesCommandPool;
@@ -81,6 +85,10 @@ private:
     VkImageView* offscreenImageViews;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+    uint32_t frameIndex = 0;
+    VkFence* frameFences;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
 
     void createSwapchainResources(Device& device, const RendererCreateInfo& createInfo);
     void destroySwapchainResources(VkDevice device);
