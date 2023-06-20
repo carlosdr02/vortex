@@ -85,7 +85,7 @@ RendererCreateInfo Game::getRendererCreateInfo() {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
-        .framesInFlight      = 3,
+        .framesInFlight      = 2,
         .uniformDataSize     = 2 * sizeof(glm::mat4)
     };
 

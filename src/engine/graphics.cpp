@@ -358,7 +358,7 @@ static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo&
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = VK_PRESENT_MODE_MAILBOX_KHR, // TODO
+        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };
@@ -589,8 +589,8 @@ void Renderer::recordCommandBuffers(VkDevice device) {
         VkImageMemoryBarrier2 imageMemoryBarrier = {
             .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .pNext               = nullptr,
-            .srcStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
-            .srcAccessMask       = VK_ACCESS_2_NONE, // WAR hazard only needs an execution dependency.
+            .srcStageMask        = VK_PIPELINE_STAGE_2_NONE,
+            .srcAccessMask       = VK_ACCESS_2_NONE,
             .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
             .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
             .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,

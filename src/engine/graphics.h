@@ -81,10 +81,10 @@ private:
     VkDeviceSize uniformDataSize;
     void* uniformBufferData;
     VkImage* offscreenImages;
-    VkDeviceMemory offscreenImagesMemory;
-    VkImageView* offscreenImageViews;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
     uint32_t frameIndex = 0;
     VkFence* frameFences;
     VkSemaphore* imageAvailableSemaphores;

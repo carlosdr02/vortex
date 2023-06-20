@@ -52,7 +52,7 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     yaw += xOffset;
     pitch += yOffset;
 
-    pitch = std::clamp(pitch, -90.0f, 90.0f);
+    pitch = clamp(pitch, -89.9f, 89.9f);
 
     vec3 orientation = {
         cos(radians(yaw)) * cos(radians(pitch)),
