@@ -66,7 +66,7 @@ static auto getRequiredDeviceExtensions() {
 }
 
 static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
-    auto requiredDeviceExtensions = getRequiredDeviceExtensions();
+    std::array<const char*, 4> requiredDeviceExtensions = getRequiredDeviceExtensions();
 
     uint32_t extensionPropertyCount;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
@@ -189,7 +189,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
-    auto deviceExtensions = getRequiredDeviceExtensions();
+    std::array<const char*, 4> deviceExtensions = getRequiredDeviceExtensions();
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
