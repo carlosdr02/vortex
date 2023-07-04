@@ -1,12 +1,15 @@
 #include "graphics.h"
 
-#include <string.h>
-
 #include <algorithm>
-#include <array>
-#include <vector>
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
+
+static const char* requiredDeviceExtensions[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+};
 
 VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
@@ -54,20 +57,7 @@ static bool isNotDiscrete(VkPhysicalDevice physicalDevice) {
     return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-static auto getRequiredDeviceExtensions() {
-    std::array<const char*, 4> deviceExtensions = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
-    };
-
-    return deviceExtensions;
-}
-
 static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
-    std::array<const char*, 4> requiredDeviceExtensions = getRequiredDeviceExtensions();
-
     uint32_t extensionPropertyCount;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
 
@@ -97,19 +87,6 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
     return doesNotSupportExtensions;
 }
 
-static std::vector<VkPhysicalDevice> getDiscretePhysicalDevices(VkInstance instance) {
-    uint32_t physicalDeviceCount;
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-
-    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-
-    std::erase_if(physicalDevices, isNotDiscrete);
-    std::erase_if(physicalDevices, doesNotSupportRequiredExtensions);
-
-    return physicalDevices;
-}
-
 static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice) {
     VkPhysicalDeviceMemoryProperties memoryProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
@@ -129,8 +106,7 @@ static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice)
 
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     // Select a physical device.
-    std::vector<VkPhysicalDevice> physicalDevices = getDiscretePhysicalDevices(instance);
-    physical = *std::ranges::max_element(physicalDevices, {}, getPhysicalDeviceMemorySize);
+    // TODO:
 
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
@@ -189,8 +165,6 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
-    std::array<const char*, 4> deviceExtensions = getRequiredDeviceExtensions();
-
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = &vulkan13Features,
@@ -199,8 +173,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = deviceExtensions.size(),
-        .ppEnabledExtensionNames = deviceExtensions.data(),
+        .enabledExtensionCount   = COUNT_OF(requiredDeviceExtensions),
+        .ppEnabledExtensionNames = requiredDeviceExtensions,
         .pEnabledFeatures        = nullptr
     };
 
@@ -453,17 +427,23 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
     // Allocate the descriptor sets.
     descriptorSets = new VkDescriptorSet[framesInFlight];
 
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, descriptorSetLayout);
+    VkDescriptorSetLayout* descriptorSetLayouts = new VkDescriptorSetLayout[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        descriptorSetLayouts[i] = descriptorSetLayout;
+    }
 
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .pNext              = nullptr,
         .descriptorPool     = descriptorPool,
         .descriptorSetCount = framesInFlight,
-        .pSetLayouts        = descriptorSetLayouts.data()
+        .pSetLayouts        = descriptorSetLayouts
     };
 
     vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, descriptorSets);
+
+    delete[] descriptorSetLayouts;
 
     // Create the uniform buffer.
     uniformBuffer = Buffer(device, framesInFlight * uniformDataSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
