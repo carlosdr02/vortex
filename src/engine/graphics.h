@@ -80,9 +80,9 @@ private:
     Buffer uniformBuffer;
     VkDeviceSize uniformDataSize;
     void* uniformBufferData;
-    VkImage* offscreenImages;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+    VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
     uint32_t frameIndex = 0;

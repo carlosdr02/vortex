@@ -64,7 +64,7 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
     VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
 
-    bool doesNotSupportExtensions = true;
+    bool doesNotSupportExtensions = false;
 
     for (const char* requiredExtension : requiredDeviceExtensions) {
         bool isExtensionAvailable = false;
@@ -77,7 +77,7 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
         }
 
         if (!isExtensionAvailable) {
-            doesNotSupportExtensions = false;
+            doesNotSupportExtensions = true;
             break;
         }
     }
@@ -85,6 +85,21 @@ static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
     delete[] extensionProperties;
 
     return doesNotSupportExtensions;
+}
+
+static void eraseNotSuitablePhysicalDevices(uint32_t& physicalDeviceCount, VkPhysicalDevice* physicalDevices) {
+    for (uint32_t i = 0; i < physicalDeviceCount; ) {
+        if (isNotDiscrete(physicalDevices[i]) || doesNotSupportRequiredExtensions(physicalDevices[i])) {
+            --physicalDeviceCount;
+
+            for (uint32_t j = i; j < physicalDeviceCount; ++j) {
+                physicalDevices[j] = physicalDevices[j + 1];
+            }
+        }
+        else {
+            ++i;
+        }
+    }
 }
 
 static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice) {
@@ -104,9 +119,35 @@ static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice)
     return memorySize;
 }
 
+static VkPhysicalDevice getBestPhysicalDevice(uint32_t physicalDeviceCount, const VkPhysicalDevice* physicalDevices) {
+    VkDeviceSize maxMemorySize = 0;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+    for (uint32_t i = 0; i < physicalDeviceCount; ++i) {
+        VkDeviceSize memorySize = getPhysicalDeviceMemorySize(physicalDevices[i]);
+
+        if (memorySize > maxMemorySize) {
+            maxMemorySize = memorySize;
+            physicalDevice = physicalDevices[i];
+        }
+    }
+
+    return physicalDevice;
+}
+
 Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     // Select a physical device.
-    // TODO:
+    uint32_t physicalDeviceCount;
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
+
+    VkPhysicalDevice* physicalDevices = new VkPhysicalDevice[physicalDeviceCount];
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices);
+
+    eraseNotSuitablePhysicalDevices(physicalDeviceCount, physicalDevices);
+
+    physical = getBestPhysicalDevice(physicalDeviceCount, physicalDevices);
+
+    delete[] physicalDevices;
 
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
@@ -220,7 +261,7 @@ VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
     VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[surfaceFormatCount];
     vkGetPhysicalDeviceSurfaceFormatsKHR(physical, surface, &surfaceFormatCount, surfaceFormats);
 
-    VkSurfaceFormatKHR surfaceFormat = surfaceFormats[0];
+    VkSurfaceFormatKHR surfaceFormat = {};
 
     for (VkFormat format : formats) {
         for (uint32_t i = 0; i < surfaceFormatCount; ++i) {
