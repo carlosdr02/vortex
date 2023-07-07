@@ -355,32 +355,21 @@ Buffer::operator VkBuffer() {
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
-
-    // Create the command pool.
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {
-        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext            = nullptr,
-        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = device.renderQueue.familyIndex
-    };
-
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 }
 
 void Renderer::destroy(VkDevice device) {
-    vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
+void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
 
     // Create the new swapchain.
-    createSwapchain(device, createInfo, oldSwapchain);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
+    vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {

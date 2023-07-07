@@ -61,11 +61,10 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void resize(VkDevice device, const RendererCreateInfo& createInfo);
+    void resize(Device& device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
-    VkCommandPool commandPool;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
 };
