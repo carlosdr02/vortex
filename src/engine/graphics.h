@@ -65,6 +65,7 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    VkCommandPool commandPool;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
 };
