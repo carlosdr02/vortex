@@ -355,10 +355,13 @@ Buffer::operator VkBuffer() {
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+    getSwapchainImages(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
+
+    delete[] swapchainImages;
 }
 
 void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
@@ -370,6 +373,8 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
 
     // Destroy the old swapchain.
     vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
+
+    getSwapchainImages(device.logical);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -398,4 +403,19 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     };
 
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
+}
+
+void Renderer::getSwapchainImages(VkDevice device) {
+    uint32_t swapchainImageCount;
+    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
+
+    if (swapchainImageCount != this->swapchainImageCount) {
+        delete[] swapchainImages;
+
+        swapchainImages = new VkImage[swapchainImageCount];
+
+        this->swapchainImageCount = swapchainImageCount;
+    }
+
+    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages);
 }

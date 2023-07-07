@@ -65,6 +65,9 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    uint32_t swapchainImageCount = 0;
+    VkImage* swapchainImages = nullptr;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+    void getSwapchainImages(VkDevice device);
 };
