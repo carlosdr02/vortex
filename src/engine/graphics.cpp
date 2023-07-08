@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
-#define COUNT_OF(array) (sizeof(array) / sizeof(array[0]))
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-static const char* requiredDeviceExtensions[] = {
+static const char* deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
     VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
     VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -50,54 +50,53 @@ VkQueue* Queue::operator&() {
     return &queue;
 }
 
-static bool isNotDiscrete(VkPhysicalDevice physicalDevice) {
+static bool isDiscrete(VkPhysicalDevice physicalDevice) {
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-    return properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-static bool doesNotSupportRequiredExtensions(VkPhysicalDevice physicalDevice) {
+static bool supportsExtensions(VkPhysicalDevice physicalDevice) {
     uint32_t extensionPropertyCount;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
 
     VkExtensionProperties* extensionProperties = new VkExtensionProperties[extensionPropertyCount];
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, extensionProperties);
 
-    bool doesNotSupportExtensions = false;
+    bool supportsExtensions = true;
 
-    for (const char* requiredExtension : requiredDeviceExtensions) {
+    for (const char* extension : deviceExtensions) {
         bool isExtensionAvailable = false;
 
         for (uint32_t i = 0; i < extensionPropertyCount; ++i) {
-            if (strcmp(requiredExtension, extensionProperties[i].extensionName) == 0) {
+            if (strcmp(extension, extensionProperties[i].extensionName) == 0) {
                 isExtensionAvailable = true;
                 break;
             }
         }
 
         if (!isExtensionAvailable) {
-            doesNotSupportExtensions = true;
+            supportsExtensions = false;
             break;
         }
     }
 
     delete[] extensionProperties;
 
-    return doesNotSupportExtensions;
+    return supportsExtensions;
 }
 
 static void eraseNotSuitablePhysicalDevices(uint32_t& physicalDeviceCount, VkPhysicalDevice* physicalDevices) {
     for (uint32_t i = 0; i < physicalDeviceCount; ) {
-        if (isNotDiscrete(physicalDevices[i]) || doesNotSupportRequiredExtensions(physicalDevices[i])) {
+        if (isDiscrete(physicalDevices[i]) && supportsExtensions(physicalDevices[i])) {
+            ++i;
+        } else {
             --physicalDeviceCount;
 
             for (uint32_t j = i; j < physicalDeviceCount; ++j) {
                 physicalDevices[j] = physicalDevices[j + 1];
             }
-        }
-        else {
-            ++i;
         }
     }
 }
@@ -119,7 +118,7 @@ static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice)
     return memorySize;
 }
 
-static VkPhysicalDevice getBestPhysicalDevice(uint32_t physicalDeviceCount, const VkPhysicalDevice* physicalDevices) {
+static VkPhysicalDevice getPhysicalDeviceWithMostMemory(uint32_t physicalDeviceCount, VkPhysicalDevice* physicalDevices) {
     VkDeviceSize maxMemorySize = 0;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
@@ -145,7 +144,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     eraseNotSuitablePhysicalDevices(physicalDeviceCount, physicalDevices);
 
-    physical = getBestPhysicalDevice(physicalDeviceCount, physicalDevices);
+    physical = getPhysicalDeviceWithMostMemory(physicalDeviceCount, physicalDevices);
 
     delete[] physicalDevices;
 
@@ -214,8 +213,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
-        .enabledExtensionCount   = COUNT_OF(requiredDeviceExtensions),
-        .ppEnabledExtensionNames = requiredDeviceExtensions,
+        .enabledExtensionCount   = ARRAY_SIZE(deviceExtensions),
+        .ppEnabledExtensionNames = deviceExtensions,
         .pEnabledFeatures        = nullptr
     };
 
@@ -241,8 +240,8 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GL
         glfwGetFramebufferSize(window, &width, &height);
 
         surfaceCapabilities.currentExtent = {
-            .width  = std::clamp(static_cast<uint32_t>(width), surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
-            .height = std::clamp(static_cast<uint32_t>(height), surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)
+            .width  = std::clamp((uint32_t)width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
+            .height = std::clamp((uint32_t)height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)
         };
     }
 
