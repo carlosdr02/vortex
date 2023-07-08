@@ -21,13 +21,6 @@ ADD_LIBRARY(game
 
 TARGET_INCLUDE_DIRECTORIES(game PUBLIC src/game)
 
-# Interface
-ADD_LIBRARY(interface
-    src/interface/camera.cpp
-)
-
-TARGET_INCLUDE_DIRECTORIES(interface PUBLIC src/interface)
-
 # Vulkan
 FIND_PACKAGE(Vulkan REQUIRED)
 
@@ -42,17 +35,10 @@ SET(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 ADD_SUBDIRECTORY(dependencies/glfw)
 
 TARGET_LINK_LIBRARIES(engine glfw)
-TARGET_LINK_LIBRARIES(interface glfw)
-
-# GLM
-ADD_SUBDIRECTORY(dependencies/glm)
-
-TARGET_LINK_LIBRARIES(interface glm)
 
 # Executable
 ADD_EXECUTABLE(achantcraft src/main.cpp)
 
 TARGET_LINK_LIBRARIES(game engine)
-TARGET_LINK_LIBRARIES(game interface)
 
 TARGET_LINK_LIBRARIES(achantcraft game)
