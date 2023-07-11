@@ -57,7 +57,7 @@ static bool isDiscrete(VkPhysicalDevice physicalDevice) {
     return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
-static bool supportsExtensions(VkPhysicalDevice physicalDevice) {
+static bool supportsRequiredExtensions(VkPhysicalDevice physicalDevice) {
     uint32_t extensionPropertyCount;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionPropertyCount, nullptr);
 
@@ -89,7 +89,7 @@ static bool supportsExtensions(VkPhysicalDevice physicalDevice) {
 
 static void eraseNotSuitablePhysicalDevices(uint32_t& physicalDeviceCount, VkPhysicalDevice* physicalDevices) {
     for (uint32_t i = 0; i < physicalDeviceCount; ) {
-        if (isDiscrete(physicalDevices[i]) && supportsExtensions(physicalDevices[i])) {
+        if (isDiscrete(physicalDevices[i]) && supportsRequiredExtensions(physicalDevices[i])) {
             ++i;
         } else {
             --physicalDeviceCount;
@@ -118,7 +118,7 @@ static VkDeviceSize getPhysicalDeviceMemorySize(VkPhysicalDevice physicalDevice)
     return memorySize;
 }
 
-static VkPhysicalDevice getPhysicalDeviceWithMostMemory(uint32_t physicalDeviceCount, VkPhysicalDevice* physicalDevices) {
+static VkPhysicalDevice getPhysicalDeviceWithMostMemory(uint32_t physicalDeviceCount, const VkPhysicalDevice* physicalDevices) {
     VkDeviceSize maxMemorySize = 0;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
@@ -354,10 +354,22 @@ Buffer::operator VkBuffer() {
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
+
+    // Create the command pool.
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = device.renderQueue.familyIndex
+    };
+
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
     getSwapchainImages(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
+    vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
     delete[] swapchainImages;

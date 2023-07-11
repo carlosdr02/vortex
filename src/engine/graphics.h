@@ -53,6 +53,7 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     uint32_t framesInFlight;
+    VkFormat format;
 };
 
 class Renderer {
@@ -65,6 +66,7 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
+    VkCommandPool commandPool;
     uint32_t swapchainImageCount = 0;
     VkImage* swapchainImages = nullptr;
 
