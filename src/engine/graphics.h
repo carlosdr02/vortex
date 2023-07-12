@@ -63,12 +63,23 @@ public:
     void destroy(VkDevice device);
 
     void resize(Device& device, const RendererCreateInfo& createInfo);
+    void redondillo(Device& device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool commandPool;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
+    uint32_t framesInFlight;
+    VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkCommandBuffer* commandBuffers;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
+    void allocateHostMemory();
+    void freeHostMemory();
+    void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
+    void destroyOffscreenResources(VkDevice device);
+    void createFrameResources(VkDevice device);
+    void destroyFrameResources(VkDevice device);
 };

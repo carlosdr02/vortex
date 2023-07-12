@@ -352,7 +352,7 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the command pool.
@@ -370,9 +370,17 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
 
     swapchainImages = new VkImage[swapchainImageCount];
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
+
+    allocateHostMemory();
+    createOffscreenResources(device, createInfo);
+    createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
+    destroyFrameResources(device);
+    destroyOffscreenResources(device);
+    freeHostMemory();
+
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
@@ -380,6 +388,8 @@ void Renderer::destroy(VkDevice device) {
 }
 
 void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
+    destroyOffscreenResources(device.logical);
+
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
 
@@ -395,11 +405,33 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
 
     if (swapchainImageCount != this->swapchainImageCount) {
         delete[] swapchainImages;
+
         swapchainImages = new VkImage[swapchainImageCount];
+
         this->swapchainImageCount = swapchainImageCount;
     }
 
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
+
+    createOffscreenResources(device, createInfo);
+}
+
+void Renderer::redondillo(Device& device, const RendererCreateInfo& createInfo) {
+    destroyOffscreenResources(device.logical);
+
+    uint32_t framesInFlight = createInfo.framesInFlight;
+
+    if (framesInFlight != this->framesInFlight) {
+        destroyFrameResources(device.logical);
+        freeHostMemory();
+
+        this->framesInFlight = framesInFlight;
+
+        allocateHostMemory();
+        createFrameResources(device.logical);
+    }
+
+    createOffscreenResources(device, createInfo);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -428,4 +460,94 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     };
 
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
+}
+
+void Renderer::allocateHostMemory() {
+    offscreenImages = new VkImage[framesInFlight];
+}
+
+void Renderer::freeHostMemory() {
+    delete[] offscreenImages;
+}
+
+void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
+        VkImageCreateInfo imageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = createInfo.format,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
+    }
+
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, offscreenImages[0], &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = framesInFlight * memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &offscreenImagesMemory);
+
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext        = nullptr;
+        bindImageMemoryInfos[i].image        = offscreenImages[i];
+        bindImageMemoryInfos[i].memory       = offscreenImagesMemory;
+        bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
+    }
+
+    vkBindImageMemory2(device.logical, framesInFlight, bindImageMemoryInfos);
+
+    delete[] bindImageMemoryInfos;
+}
+
+void Renderer::destroyOffscreenResources(VkDevice device) {
+    vkFreeMemory(device, offscreenImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImage(device, offscreenImages[i], nullptr);
+    }
+}
+
+void Renderer::createFrameResources(VkDevice device) {
+    commandBuffers = new VkCommandBuffer[framesInFlight];
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = framesInFlight
+    };
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+}
+
+void Renderer::destroyFrameResources(VkDevice device) {
+    vkFreeCommandBuffers(device, commandPool, framesInFlight, commandBuffers);
+
+    delete[] commandBuffers;
 }
