@@ -406,9 +406,9 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
     if (swapchainImageCount != this->swapchainImageCount) {
         delete[] swapchainImages;
 
-        swapchainImages = new VkImage[swapchainImageCount];
-
         this->swapchainImageCount = swapchainImageCount;
+
+        swapchainImages = new VkImage[swapchainImageCount];
     }
 
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
@@ -533,6 +533,7 @@ void Renderer::destroyOffscreenResources(VkDevice device) {
 }
 
 void Renderer::createFrameResources(VkDevice device) {
+    // Allocate the command buffers.
     commandBuffers = new VkCommandBuffer[framesInFlight];
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
@@ -544,10 +545,43 @@ void Renderer::createFrameResources(VkDevice device) {
     };
 
     vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+
+    // Create the semaphores and fences.
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    fences = new VkFence[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device, &fenceCreateInfo, nullptr, &fences[i]);
+    }
 }
 
 void Renderer::destroyFrameResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyFence(device, fences[i], nullptr);
+        vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+    }
+
     vkFreeCommandBuffers(device, commandPool, framesInFlight, commandBuffers);
 
+    delete[] fences;
+    delete[] renderFinishedSemaphores;
+    delete[] imageAvailableSemaphores;
     delete[] commandBuffers;
 }

@@ -74,6 +74,9 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkCommandBuffer* commandBuffers;
+    VkSemaphore* imageAvailableSemaphores;
+    VkSemaphore* renderFinishedSemaphores;
+    VkFence* fences;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void allocateHostMemory();
