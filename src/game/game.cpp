@@ -9,6 +9,9 @@ Game::Game() {
 
 Game::~Game() {
     renderer.destroy(device.logical);
+
+    vkDestroyRenderPass(device.logical, renderPass, nullptr);
+
     device.destroy();
 
     vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -37,6 +40,7 @@ void Game::createEngineResources() {
     device = Device(instance, surface);
     surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     surfaceFormat = device.getSurfaceFormat(surface);
+    renderPass = createRenderPass(device.logical, VK_FORMAT_R16G16B16A16_SFLOAT);
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
