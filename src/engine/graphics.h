@@ -69,16 +69,14 @@ public:
 
 private:
     VkSwapchainKHR swapchain;
-    VkCommandPool imagesCommandPool;
-    VkCommandPool framesCommandPool;
+    VkCommandPool commandPool;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     uint32_t framesInFlight;
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
-    VkCommandBuffer* imagesCommandBuffers;
-    VkCommandBuffer* framesCommandBuffers;
+    VkCommandBuffer* commandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
     VkFence* fences;
