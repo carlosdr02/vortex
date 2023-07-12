@@ -363,7 +363,10 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : frame
         .queueFamilyIndex = device.renderQueue.familyIndex
     };
 
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &imagesCommandPool);
+
+    commandPoolCreateInfo.flags = 0;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &framesCommandPool);
 
     // Get the swapchain images.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
@@ -381,7 +384,8 @@ void Renderer::destroy(VkDevice device) {
     destroyOffscreenResources(device);
     freeHostMemory();
 
-    vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyCommandPool(device, framesCommandPool, nullptr);
+    vkDestroyCommandPool(device, imagesCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 
     delete[] swapchainImages;
@@ -534,17 +538,21 @@ void Renderer::destroyOffscreenResources(VkDevice device) {
 
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
-    commandBuffers = new VkCommandBuffer[framesInFlight];
+    imagesCommandBuffers = new VkCommandBuffer[framesInFlight];
+    framesCommandBuffers = new VkCommandBuffer[framesInFlight];
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext              = nullptr,
-        .commandPool        = commandPool,
+        .commandPool        = imagesCommandPool,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = framesInFlight
     };
 
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, imagesCommandBuffers);
+
+    commandBufferAllocateInfo.commandPool = framesCommandPool;
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, framesCommandBuffers);
 
     // Create the semaphores and fences.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
@@ -578,10 +586,12 @@ void Renderer::destroyFrameResources(VkDevice device) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
 
-    vkFreeCommandBuffers(device, commandPool, framesInFlight, commandBuffers);
+    vkFreeCommandBuffers(device, framesCommandPool, framesInFlight, framesCommandBuffers);
+    vkFreeCommandBuffers(device, imagesCommandPool, framesInFlight, imagesCommandBuffers);
 
     delete[] fences;
     delete[] renderFinishedSemaphores;
     delete[] imageAvailableSemaphores;
-    delete[] commandBuffers;
+    delete[] framesCommandBuffers;
+    delete[] imagesCommandBuffers;
 }
