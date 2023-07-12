@@ -648,7 +648,8 @@ void Renderer::destroyOffscreenResources(VkDevice device) {
 
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
-    commandBuffers = new VkCommandBuffer[framesInFlight];
+    imagesCommandBuffers = new VkCommandBuffer[framesInFlight];
+    framesCommandBuffers = new VkCommandBuffer[framesInFlight];
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -658,7 +659,8 @@ void Renderer::createFrameResources(VkDevice device) {
         .commandBufferCount = framesInFlight
     };
 
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, imagesCommandBuffers);
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, framesCommandBuffers);
 
     // Create the semaphores and fences.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
@@ -692,10 +694,12 @@ void Renderer::destroyFrameResources(VkDevice device) {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
     }
 
-    vkFreeCommandBuffers(device, commandPool, framesInFlight, commandBuffers);
+    vkFreeCommandBuffers(device, commandPool, framesInFlight, framesCommandBuffers);
+    vkFreeCommandBuffers(device, commandPool, framesInFlight, imagesCommandBuffers);
 
     delete[] fences;
     delete[] renderFinishedSemaphores;
     delete[] imageAvailableSemaphores;
-    delete[] commandBuffers;
+    delete[] framesCommandBuffers;
+    delete[] imagesCommandBuffers;
 }

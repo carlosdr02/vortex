@@ -76,7 +76,8 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
-    VkCommandBuffer* commandBuffers;
+    VkCommandBuffer* imagesCommandBuffers;
+    VkCommandBuffer* framesCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
     VkFence* fences;
