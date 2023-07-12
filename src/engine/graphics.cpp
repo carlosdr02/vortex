@@ -468,13 +468,17 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
 
 void Renderer::allocateHostMemory() {
     offscreenImages = new VkImage[framesInFlight];
+    offscreenImageViews = new VkImageView[framesInFlight];
 }
 
 void Renderer::freeHostMemory() {
+    delete[] offscreenImageViews;
     delete[] offscreenImages;
 }
 
 void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
+    VkFormat format = createInfo.format;
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
 
@@ -483,13 +487,13 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .pNext                 = nullptr,
             .flags                 = 0,
             .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = createInfo.format,
+            .format                = format,
             .extent                = { extent.width, extent.height, 1 },
             .mipLevels             = 1,
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
@@ -526,9 +530,28 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
     vkBindImageMemory2(device.logical, framesInFlight, bindImageMemoryInfos);
 
     delete[] bindImageMemoryInfos;
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = offscreenImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = format,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
+    }
 }
 
 void Renderer::destroyOffscreenResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+    }
+
     vkFreeMemory(device, offscreenImagesMemory, nullptr);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {

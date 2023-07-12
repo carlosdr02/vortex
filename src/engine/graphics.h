@@ -74,6 +74,7 @@ private:
     uint32_t framesInFlight;
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
     VkCommandBuffer* imagesCommandBuffers;
     VkCommandBuffer* framesCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
