@@ -47,7 +47,8 @@ void Game::createEngineResources() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .framesInFlight      = 2,
-        .format              = VK_FORMAT_R16G16B16A16_SFLOAT
+        .format              = VK_FORMAT_R16G16B16A16_SFLOAT,
+        .renderPass          = renderPass
     };
 
     renderer = Renderer(device, rendererCreateInfo);

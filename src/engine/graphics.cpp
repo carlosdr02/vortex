@@ -525,6 +525,11 @@ void Renderer::redondillo(Device& device, const RendererCreateInfo& createInfo) 
     createOffscreenResources(device, createInfo);
 }
 
+void Renderer::recreateFramebuffers(VkDevice device, const RendererCreateInfo& createInfo) {
+    destroyFramebuffers(device);
+    createFramebuffers(device, createInfo);
+}
+
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities = createInfo.surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat = createInfo.surfaceFormat;
@@ -556,9 +561,11 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
 void Renderer::allocateHostMemory() {
     offscreenImages = new VkImage[framesInFlight];
     offscreenImageViews = new VkImageView[framesInFlight];
+    framebuffers = new VkFramebuffer[framesInFlight];
 }
 
 void Renderer::freeHostMemory() {
+    delete[] framebuffers;
     delete[] offscreenImageViews;
     delete[] offscreenImages;
 }
@@ -632,9 +639,13 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
 
         vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
     }
+
+    createFramebuffers(device.logical, createInfo);
 }
 
 void Renderer::destroyOffscreenResources(VkDevice device) {
+    destroyFramebuffers(device);
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyImageView(device, offscreenImageViews[i], nullptr);
     }
@@ -643,6 +654,32 @@ void Renderer::destroyOffscreenResources(VkDevice device) {
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyImage(device, offscreenImages[i], nullptr);
+    }
+}
+
+void Renderer::createFramebuffers(VkDevice device, const RendererCreateInfo& createInfo) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
+        VkFramebufferCreateInfo framebufferCreateInfo = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext           = nullptr,
+            .flags           = 0,
+            .renderPass      = createInfo.renderPass,
+            .attachmentCount = 1,
+            .pAttachments    = &offscreenImageViews[i],
+            .width           = extent.width,
+            .height          = extent.height,
+            .layers          = 1
+        };
+
+        vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffers[i]);
+    }
+}
+
+void Renderer::destroyFramebuffers(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyFramebuffer(device, framebuffers[i], nullptr);
     }
 }
 

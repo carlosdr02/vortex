@@ -56,6 +56,7 @@ struct RendererCreateInfo {
     VkSurfaceFormatKHR surfaceFormat;
     uint32_t framesInFlight;
     VkFormat format;
+    VkRenderPass renderPass;
 };
 
 class Renderer {
@@ -66,6 +67,7 @@ public:
 
     void resize(Device& device, const RendererCreateInfo& createInfo);
     void redondillo(Device& device, const RendererCreateInfo& createInfo);
+    void recreateFramebuffers(VkDevice device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
@@ -76,6 +78,7 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
+    VkFramebuffer* framebuffers;
     VkCommandBuffer* imagesCommandBuffers;
     VkCommandBuffer* framesCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
@@ -87,6 +90,8 @@ private:
     void freeHostMemory();
     void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
     void destroyOffscreenResources(VkDevice device);
+    void createFramebuffers(VkDevice device, const RendererCreateInfo& createInfo);
+    void destroyFramebuffers(VkDevice device);
     void createFrameResources(VkDevice device);
     void destroyFrameResources(VkDevice device);
 };
