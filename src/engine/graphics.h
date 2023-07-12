@@ -65,6 +65,10 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
+    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
+
+    void waitIdle(VkDevice device);
+
     void resize(Device& device, const RendererCreateInfo& createInfo);
     void redondillo(Device& device, const RendererCreateInfo& createInfo);
     void recreateFramebuffers(VkDevice device, const RendererCreateInfo& createInfo);
@@ -83,6 +87,7 @@ private:
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
     VkFence* fences;
+    uint32_t frameIndex;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void allocateHostMemory();

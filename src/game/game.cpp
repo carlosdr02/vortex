@@ -8,6 +8,7 @@ Game::Game() {
 }
 
 Game::~Game() {
+    renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
@@ -25,6 +26,21 @@ Game::~Game() {
 void Game::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+
+            while (width == 0 || height == 0) {
+                glfwWaitEvents();
+                glfwGetFramebufferSize(window, &width, &height);
+            }
+
+            renderer.waitIdle(device.logical);
+
+            RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
+            renderer.resize(device, rendererCreateInfo);
+        }
     }
 }
 
@@ -38,9 +54,15 @@ void Game::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
-    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, VK_FORMAT_R16G16B16A16_SFLOAT);
+
+    RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
+    renderer = Renderer(device, rendererCreateInfo);
+}
+
+RendererCreateInfo Game::getRendererCreateInfo() {
+    surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
 
     RendererCreateInfo rendererCreateInfo = {
         .surface             = surface,
@@ -51,5 +73,5 @@ void Game::createEngineResources() {
         .renderPass          = renderPass
     };
 
-    renderer = Renderer(device, rendererCreateInfo);
+    return rendererCreateInfo;
 }

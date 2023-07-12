@@ -21,4 +21,6 @@ private:
 
     void createWindow();
     void createEngineResources();
+
+    RendererCreateInfo getRendererCreateInfo();
 };
