@@ -365,7 +365,11 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) {
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
-    getSwapchainImages(device.logical);
+    // Get the swapchain images.
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
+
+    swapchainImages = new VkImage[swapchainImageCount];
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 }
 
 void Renderer::destroy(VkDevice device) {
@@ -385,7 +389,17 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
     // Destroy the old swapchain.
     vkDestroySwapchainKHR(device.logical, swapchain, nullptr);
 
-    getSwapchainImages(device.logical);
+    // Get the swapchain images.
+    uint32_t swapchainImageCount;
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
+
+    if (swapchainImageCount != this->swapchainImageCount) {
+        delete[] swapchainImages;
+        swapchainImages = new VkImage[swapchainImageCount];
+        this->swapchainImageCount = swapchainImageCount;
+    }
+
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, swapchainImages);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -414,19 +428,4 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     };
 
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
-}
-
-void Renderer::getSwapchainImages(VkDevice device) {
-    uint32_t swapchainImageCount;
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
-
-    if (swapchainImageCount != this->swapchainImageCount) {
-        delete[] swapchainImages;
-
-        swapchainImages = new VkImage[swapchainImageCount];
-
-        this->swapchainImageCount = swapchainImageCount;
-    }
-
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages);
 }
