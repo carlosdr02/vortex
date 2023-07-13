@@ -39,7 +39,7 @@ void Game::run() {
             renderer.waitIdle(device.logical);
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
-            renderer.resize(device, rendererCreateInfo);
+            renderer.resize(device.logical, rendererCreateInfo);
         }
     }
 }
@@ -68,8 +68,8 @@ RendererCreateInfo Game::getRendererCreateInfo() {
         .surface             = surface,
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
-        .framesInFlight      = 2,
-        .renderPass          = renderPass
+        .renderPass          = renderPass,
+        .framesInFlight      = 2
     };
 
     return rendererCreateInfo;
