@@ -321,7 +321,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
     memoryBarriers[1].pNext         = nullptr;
     memoryBarriers[1].srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     memoryBarriers[1].srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-    memoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    memoryBarriers[1].dstStageMask  = VK_PIPELINE_STAGE_2_COPY_BIT;
     memoryBarriers[1].dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
 
     VkSubpassDependency2 subpassDependencies[2];
@@ -435,9 +435,9 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     VkImageMemoryBarrier2 imageMemoryBarrier = {
         .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .pNext               = nullptr,
-        .srcStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .srcStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
         .srcAccessMask       = VK_ACCESS_2_NONE,
-        .dstStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .dstStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
         .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
         .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
         .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -506,14 +506,14 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     semaphoreSubmitInfos[0].pNext       = nullptr;
     semaphoreSubmitInfos[0].semaphore   = imageAvailableSemaphores[frameIndex];
     semaphoreSubmitInfos[0].value       = 0;
-    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_COPY_BIT;
     semaphoreSubmitInfos[0].deviceIndex = 0;
 
     semaphoreSubmitInfos[1].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     semaphoreSubmitInfos[1].pNext       = nullptr;
     semaphoreSubmitInfos[1].semaphore   = renderFinishedSemaphores[frameIndex];
     semaphoreSubmitInfos[1].value       = 0;
-    semaphoreSubmitInfos[1].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
+    semaphoreSubmitInfos[1].stageMask   = VK_PIPELINE_STAGE_2_COPY_BIT;
     semaphoreSubmitInfos[1].deviceIndex = 0;
 
     VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
