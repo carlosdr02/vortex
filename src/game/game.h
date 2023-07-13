@@ -16,7 +16,6 @@ private:
     Device device;
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
-    VkRenderPass renderPass;
     Renderer renderer;
 
     void createWindow();

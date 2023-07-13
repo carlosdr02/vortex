@@ -32,8 +32,6 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format);
-
 class Buffer {
 public:
     VkDeviceMemory memory;
@@ -55,8 +53,6 @@ struct RendererCreateInfo {
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     uint32_t framesInFlight;
-    VkFormat format;
-    VkRenderPass renderPass;
 };
 
 class Renderer {
@@ -65,37 +61,13 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
-
-    void waitIdle(VkDevice device);
-
     void resize(Device& device, const RendererCreateInfo& createInfo);
-    void redondillo(Device& device, const RendererCreateInfo& createInfo);
-    void recreateFramebuffers(VkDevice device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
     VkCommandPool commandPool;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
-    uint32_t framesInFlight;
-    VkImage* offscreenImages;
-    VkDeviceMemory offscreenImagesMemory;
-    VkImageView* offscreenImageViews;
-    VkFramebuffer* framebuffers;
-    VkCommandBuffer* commandBuffers;
-    VkSemaphore* imageAvailableSemaphores;
-    VkSemaphore* renderFinishedSemaphores;
-    VkFence* fences;
-    uint32_t frameIndex;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
-    void allocateHostMemory();
-    void freeHostMemory();
-    void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
-    void destroyOffscreenResources(VkDevice device);
-    void createFramebuffers(VkDevice device, const RendererCreateInfo& createInfo);
-    void destroyFramebuffers(VkDevice device);
-    void createFrameResources(VkDevice device);
-    void destroyFrameResources(VkDevice device);
 };
