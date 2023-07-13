@@ -2,13 +2,6 @@
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-static const char* deviceExtensions[] = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-    VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-    VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
-};
-
 VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -117,6 +110,13 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .pQueuePriorities = &queuePriority
     };
 
+    const char* deviceExtensions[] = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME
+    };
+
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = &vulkan13Features,
@@ -152,13 +152,18 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GL
     uint32_t maxImageCount = surfaceCapabilities.maxImageCount != 0 ? surfaceCapabilities.maxImageCount : UINT32_MAX;
     surfaceCapabilities.minImageCount = clamp(3, surfaceCapabilities.minImageCount, maxImageCount);
 
-    if (surfaceCapabilities.currentExtent.width == UINT32_MAX) {
+    VkExtent2D& currentExtent = surfaceCapabilities.currentExtent;
+
+    if (currentExtent.width == UINT32_MAX) {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
-        surfaceCapabilities.currentExtent = {
-            .width  = clamp(width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width),
-            .height = clamp(height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height)
+        VkExtent2D minExtent = surfaceCapabilities.minImageExtent;
+        VkExtent2D maxExtent = surfaceCapabilities.maxImageExtent;
+
+        currentExtent = {
+            .width  = clamp(width, minExtent.width, maxExtent.width),
+            .height = clamp(height, minExtent.height, maxExtent.height)
         };
     }
 
@@ -593,12 +598,11 @@ void Renderer::setFramesInFlight(Device& device, const RendererCreateInfo& creat
     freeHostMemory();
 
     framesInFlight = createInfo.framesInFlight;
+    frameIndex = 0;
 
     allocateHostMemory();
     createOffscreenResources(device, createInfo);
     createFrameResources(device.logical);
-
-    frameIndex = 0;
 }
 
 void Renderer::recreateFramebuffers(VkDevice device, const RendererCreateInfo& createInfo) {
