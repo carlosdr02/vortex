@@ -19,7 +19,6 @@ Game::~Game() {
     vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
-
     glfwTerminate();
 }
 
