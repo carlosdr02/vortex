@@ -48,6 +48,7 @@ TARGET_LINK_LIBRARIES(engine imgui)
 # Game
 ADD_LIBRARY(game
     src/game/game.cpp
+    src/game/gui.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(game PUBLIC src/game)

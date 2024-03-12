@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "gui.h"
+
 Game::Game() {
     glfwInit();
 
@@ -26,6 +28,8 @@ Game::~Game() {
 void Game::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        renderGui();
 
         if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
             int width, height;
