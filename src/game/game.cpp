@@ -11,6 +11,7 @@ Game::~Game() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
+    vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
     device.destroy();
@@ -55,6 +56,7 @@ void Game::createEngineResources() {
     device = Device(instance, surface);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, surfaceFormat.format);
+    guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
     renderer = Renderer(device, rendererCreateInfo);

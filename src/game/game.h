@@ -17,6 +17,7 @@ private:
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkRenderPass renderPass;
+    VkDescriptorPool guiDescriptorPool;
     Renderer renderer;
 
     void createWindow();

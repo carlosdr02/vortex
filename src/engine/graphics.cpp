@@ -414,6 +414,26 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
     return renderPass;
 }
 
+VkDescriptorPool createGuiDescriptorPool(VkDevice device) {
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+        .maxSets       = 1,
+        .poolSizeCount = ARRAY_SIZE(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
+    };
+
+    VkDescriptorPool descriptorPool;
+    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    return descriptorPool;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     : framesInFlight(createInfo.framesInFlight)
     , frameIndex(0)

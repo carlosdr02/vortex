@@ -49,6 +49,7 @@ private:
 };
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat format);
+VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
