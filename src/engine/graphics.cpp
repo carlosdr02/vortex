@@ -221,8 +221,8 @@ VkSurfaceCapabilitiesKHR Device::getSurfaceCapabilities(VkSurfaceKHR surface, GL
 
 VkSurfaceFormatKHR Device::getSurfaceFormat(VkSurfaceKHR surface) {
     VkFormat formats[] = {
-        VK_FORMAT_R8G8B8A8_SRGB,
-        VK_FORMAT_B8G8R8A8_SRGB
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_UNORM
     };
 
     uint32_t surfaceFormatCount;

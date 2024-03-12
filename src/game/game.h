@@ -22,6 +22,7 @@ private:
 
     void createWindow();
     void createEngineResources();
+    void createGuiResources();
 
     RendererCreateInfo getRendererCreateInfo();
 };

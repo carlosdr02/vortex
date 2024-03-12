@@ -1,5 +1,8 @@
 #include "game.h"
 
+#include <imgui_impl_vulkan.h>
+#include <imgui_impl_glfw.h>
+
 #include "gui.h"
 
 Game::Game() {
@@ -7,11 +10,16 @@ Game::Game() {
 
     createWindow();
     createEngineResources();
+    createGuiResources();
 }
 
 Game::~Game() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
+
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
@@ -64,6 +72,33 @@ void Game::createEngineResources() {
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
     renderer = Renderer(device, rendererCreateInfo);
+}
+
+void Game::createGuiResources() {
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {
+        .Instance            = instance,
+        .PhysicalDevice      = device.physical,
+        .Device              = device.logical,
+        .QueueFamily         = device.renderQueue.familyIndex,
+        .Queue               = device.renderQueue,
+        .DescriptorPool      = guiDescriptorPool,
+        .RenderPass          = renderPass,
+        .MinImageCount       = surfaceCapabilities.minImageCount,
+        .ImageCount          = surfaceCapabilities.minImageCount,
+        .MSAASamples         = VK_SAMPLE_COUNT_1_BIT,
+        .PipelineCache       = VK_NULL_HANDLE,
+        .Subpass             = 0,
+        .UseDynamicRendering = false,
+        .Allocator           = nullptr,
+        .CheckVkResultFn     = nullptr,
+        .MinAllocationSize   = 0
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {
