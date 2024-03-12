@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <imgui_impl_vulkan.h>
+
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 VkInstance createInstance() {
@@ -479,7 +481,8 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     vkCmdBeginRenderPass(commandBuffers[frameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    // TODO: ImGui
+    ImDrawData* drawData = ImGui::GetDrawData();
+    ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[frameIndex]);
 
     vkCmdEndRenderPass(commandBuffers[frameIndex]);
 
