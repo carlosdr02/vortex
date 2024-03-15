@@ -749,6 +749,21 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
     };
 
     vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &offscreenImagesMemory);
+
+    // Bind the off-screen images memory.
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext        = nullptr;
+        bindImageMemoryInfos[i].image        = offscreenImages[i];
+        bindImageMemoryInfos[i].memory       = offscreenImagesMemory;
+        bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
+    }
+
+    vkBindImageMemory2(device.logical, framesInFlight, bindImageMemoryInfos);
+
+    delete[] bindImageMemoryInfos;
 }
 
 void Renderer::createFrameResources(VkDevice device) {
