@@ -80,6 +80,7 @@ private:
     VkImageView* swapchainImageViews;
     VkFramebuffer* framebuffers;
     uint32_t framesInFlight;
+    VkImage* offscreenImages;
     VkCommandBuffer* commandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
@@ -87,11 +88,13 @@ private:
     uint32_t frameIndex;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
-    void allocateSwapchainResourcesHostMemory();
+    void allocateSwapchainResourcesMemory();
     void createSwapchainResources(VkDevice device, const RendererCreateInfo& createInfo);
+    void allocateOffscreenResourcesMemory();
     void createFrameResources(VkDevice device);
 
-    void freeSwapchainResourcesHostMemory();
+    void freeSwapchainResourcesMemory();
     void destroySwapchainResources(VkDevice device);
+    void freeOffscreenResourcesMemory();
     void destroyFrameResources(VkDevice device);
 };

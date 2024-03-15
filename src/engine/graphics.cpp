@@ -471,15 +471,17 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
-    allocateSwapchainResourcesHostMemory();
+    allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
+    allocateOffscreenResourcesMemory();
     createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
     destroyFrameResources(device);
+    freeOffscreenResourcesMemory();
     destroySwapchainResources(device);
-    freeSwapchainResourcesHostMemory();
+    freeSwapchainResourcesMemory();
 
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -604,11 +606,11 @@ void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
     vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
 
     if (swapchainImageCount != this->swapchainImageCount) {
-        freeSwapchainResourcesHostMemory();
+        freeSwapchainResourcesMemory();
 
         this->swapchainImageCount = swapchainImageCount;
 
-        allocateSwapchainResourcesHostMemory();
+        allocateSwapchainResourcesMemory();
     }
 
     createSwapchainResources(device, createInfo);
@@ -616,10 +618,12 @@ void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
 
 void Renderer::setFramesInFlight(VkDevice device, uint32_t framesInFlight) {
     destroyFrameResources(device);
+    freeOffscreenResourcesMemory();
 
     this->framesInFlight = framesInFlight;
     frameIndex = 0;
 
+    allocateOffscreenResourcesMemory();
     createFrameResources(device);
 }
 
@@ -651,7 +655,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
-void Renderer::allocateSwapchainResourcesHostMemory() {
+void Renderer::allocateSwapchainResourcesMemory() {
     swapchainImages = new VkImage[swapchainImageCount];
     swapchainImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
@@ -695,6 +699,10 @@ void Renderer::createSwapchainResources(VkDevice device, const RendererCreateInf
     }
 }
 
+void Renderer::allocateOffscreenResourcesMemory() {
+    offscreenImages = new VkImage[framesInFlight];
+}
+
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
     commandBuffers = new VkCommandBuffer[framesInFlight];
@@ -734,7 +742,7 @@ void Renderer::createFrameResources(VkDevice device) {
     }
 }
 
-void Renderer::freeSwapchainResourcesHostMemory() {
+void Renderer::freeSwapchainResourcesMemory() {
     delete[] framebuffers;
     delete[] swapchainImageViews;
     delete[] swapchainImages;
@@ -745,6 +753,10 @@ void Renderer::destroySwapchainResources(VkDevice device) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
     }
+}
+
+void Renderer::freeOffscreenResourcesMemory() {
+    delete[] offscreenImages;
 }
 
 void Renderer::destroyFrameResources(VkDevice device) {
