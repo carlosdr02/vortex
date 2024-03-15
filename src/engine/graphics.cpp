@@ -474,11 +474,13 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
     allocateOffscreenResourcesMemory();
+    createOffscreenResources(device.logical, createInfo);
     createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
     destroyFrameResources(device);
+    destroyOffscreenResources(device);
     freeOffscreenResourcesMemory();
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
@@ -590,6 +592,7 @@ void Renderer::waitIdle(VkDevice device) {
 }
 
 void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
+    destroyOffscreenResources(device);
     destroySwapchainResources(device);
 
     // Store the old swapchain.
@@ -614,16 +617,19 @@ void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
     }
 
     createSwapchainResources(device, createInfo);
+    createOffscreenResources(device, createInfo);
 }
 
-void Renderer::setFramesInFlight(VkDevice device, uint32_t framesInFlight) {
+void Renderer::setFramesInFlight(VkDevice device, const RendererCreateInfo& createInfo) {
     destroyFrameResources(device);
+    destroyOffscreenResources(device);
     freeOffscreenResourcesMemory();
 
-    this->framesInFlight = framesInFlight;
+    framesInFlight = createInfo.framesInFlight;
     frameIndex = 0;
 
     allocateOffscreenResourcesMemory();
+    createOffscreenResources(device, createInfo);
     createFrameResources(device);
 }
 
@@ -641,7 +647,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .imageColorSpace       = surfaceFormat.colorSpace,
         .imageExtent           = surfaceCapabilities->currentExtent,
         .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices   = nullptr,
@@ -703,6 +709,32 @@ void Renderer::allocateOffscreenResourcesMemory() {
     offscreenImages = new VkImage[framesInFlight];
 }
 
+void Renderer::createOffscreenResources(VkDevice device, const RendererCreateInfo& createInfo) {
+    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkImageCreateInfo imageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED // TODO
+        };
+
+        vkCreateImage(device, &imageCreateInfo, nullptr, &offscreenImages[i]);
+    }
+}
+
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
     commandBuffers = new VkCommandBuffer[framesInFlight];
@@ -757,6 +789,12 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 
 void Renderer::freeOffscreenResourcesMemory() {
     delete[] offscreenImages;
+}
+
+void Renderer::destroyOffscreenResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImage(device, offscreenImages[i], nullptr);
+    }
 }
 
 void Renderer::destroyFrameResources(VkDevice device) {
