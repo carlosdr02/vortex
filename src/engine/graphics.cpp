@@ -278,7 +278,7 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
 
     vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
 
-    // Allocate device memory.
+    // Allocate the device memory.
     VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo = {
         .sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
         .pNext      = nullptr,
@@ -323,18 +323,17 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp) {
     VkAttachmentDescription2 attachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
         .flags          = 0,
         .format         = format,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp         = loadOp,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
         .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     };
 
@@ -366,8 +365,6 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
 
     memoryBarriers[0].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
     memoryBarriers[0].pNext         = nullptr;
-    memoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
     memoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     memoryBarriers[0].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
@@ -407,6 +404,27 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
         .correlatedViewMaskCount = 0,
         .pCorrelatedViewMasks    = nullptr
     };
+
+    switch (loadOp) {
+        case VK_ATTACHMENT_LOAD_OP_LOAD:
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+            break;
+
+        case VK_ATTACHMENT_LOAD_OP_CLEAR:
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+
+            break;
+
+        default:
+            return VK_NULL_HANDLE;
+    }
 
     VkRenderPass renderPass;
     vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
@@ -453,15 +471,19 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
-    allocateSwapchainResourcesHostMemory();
+    allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
+    allocateOffscreenResourcesMemory();
+    createOffscreenResources(device, createInfo);
     createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
     destroyFrameResources(device);
+    destroyOffscreenResources(device);
+    freeOffscreenResourcesMemory();
     destroySwapchainResources(device);
-    freeSwapchainResourcesHostMemory();
+    freeSwapchainResourcesMemory();
 
     vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -569,40 +591,46 @@ void Renderer::waitIdle(VkDevice device) {
     vkWaitForFences(device, framesInFlight, fences, VK_TRUE, UINT64_MAX);
 }
 
-void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
-    destroySwapchainResources(device);
+void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
+    destroyOffscreenResources(device.logical);
+    destroySwapchainResources(device.logical);
 
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
 
     // Create the new swapchain.
-    createSwapchain(device, createInfo, oldSwapchain);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
 
     // Reallocate the host memory only if the number of swapchain images has changed.
     uint32_t swapchainImageCount;
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
     if (swapchainImageCount != this->swapchainImageCount) {
-        freeSwapchainResourcesHostMemory();
+        freeSwapchainResourcesMemory();
 
         this->swapchainImageCount = swapchainImageCount;
 
-        allocateSwapchainResourcesHostMemory();
+        allocateSwapchainResourcesMemory();
     }
 
-    createSwapchainResources(device, createInfo);
+    createSwapchainResources(device.logical, createInfo);
+    createOffscreenResources(device, createInfo);
 }
 
-void Renderer::setFramesInFlight(VkDevice device, uint32_t framesInFlight) {
-    destroyFrameResources(device);
+void Renderer::setFramesInFlight(Device& device, const RendererCreateInfo& createInfo) {
+    destroyFrameResources(device.logical);
+    destroyOffscreenResources(device.logical);
+    freeOffscreenResourcesMemory();
 
-    this->framesInFlight = framesInFlight;
+    framesInFlight = createInfo.framesInFlight;
     frameIndex = 0;
 
-    createFrameResources(device);
+    allocateOffscreenResourcesMemory();
+    createOffscreenResources(device, createInfo);
+    createFrameResources(device.logical);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -619,7 +647,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .imageColorSpace       = surfaceFormat.colorSpace,
         .imageExtent           = surfaceCapabilities->currentExtent,
         .imageArrayLayers      = 1,
-        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage            = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
         .imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE,
         .queueFamilyIndexCount = 0,
         .pQueueFamilyIndices   = nullptr,
@@ -633,7 +661,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
     vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapchain);
 }
 
-void Renderer::allocateSwapchainResourcesHostMemory() {
+void Renderer::allocateSwapchainResourcesMemory() {
     swapchainImages = new VkImage[swapchainImageCount];
     swapchainImageViews = new VkImageView[swapchainImageCount];
     framebuffers = new VkFramebuffer[swapchainImageCount];
@@ -677,6 +705,84 @@ void Renderer::createSwapchainResources(VkDevice device, const RendererCreateInf
     }
 }
 
+void Renderer::allocateOffscreenResourcesMemory() {
+    offscreenImages = new VkImage[framesInFlight];
+    offscreenImageViews = new VkImageView[framesInFlight];
+}
+
+void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
+    // Create the off-screen images.
+    VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkImageCreateInfo imageCreateInfo = {
+            .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext                 = nullptr,
+            .flags                 = 0,
+            .imageType             = VK_IMAGE_TYPE_2D,
+            .format                = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+            .extent                = { extent.width, extent.height, 1 },
+            .mipLevels             = 1,
+            .arrayLayers           = 1,
+            .samples               = VK_SAMPLE_COUNT_1_BIT,
+            .tiling                = VK_IMAGE_TILING_OPTIMAL,
+            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED // TODO
+        };
+
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
+    }
+
+    // Allocate the off-screen images memory.
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, offscreenImages[0], &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = framesInFlight * memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &offscreenImagesMemory);
+
+    // Bind the off-screen images memory.
+    VkBindImageMemoryInfo* bindImageMemoryInfos = new VkBindImageMemoryInfo[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+        bindImageMemoryInfos[i].pNext        = nullptr;
+        bindImageMemoryInfos[i].image        = offscreenImages[i];
+        bindImageMemoryInfos[i].memory       = offscreenImagesMemory;
+        bindImageMemoryInfos[i].memoryOffset = i * memoryRequirements.size;
+    }
+
+    vkBindImageMemory2(device.logical, framesInFlight, bindImageMemoryInfos);
+
+    delete[] bindImageMemoryInfos;
+
+    // Create the off-screen image views.
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkImageViewCreateInfo imageViewCreateInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .image            = offscreenImages[i],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+            .components       = { VK_COMPONENT_SWIZZLE_IDENTITY },
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        };
+
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
+    }
+}
+
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
     commandBuffers = new VkCommandBuffer[framesInFlight];
@@ -716,7 +822,7 @@ void Renderer::createFrameResources(VkDevice device) {
     }
 }
 
-void Renderer::freeSwapchainResourcesHostMemory() {
+void Renderer::freeSwapchainResourcesMemory() {
     delete[] framebuffers;
     delete[] swapchainImageViews;
     delete[] swapchainImages;
@@ -726,6 +832,23 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
+    }
+}
+
+void Renderer::freeOffscreenResourcesMemory() {
+    delete[] offscreenImageViews;
+    delete[] offscreenImages;
+}
+
+void Renderer::destroyOffscreenResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, offscreenImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImage(device, offscreenImages[i], nullptr);
     }
 }
 
