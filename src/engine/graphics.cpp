@@ -278,7 +278,7 @@ Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMe
 
     vkCreateBuffer(device.logical, &bufferCreateInfo, nullptr, &buffer);
 
-    // Allocate device memory.
+    // Allocate the device memory.
     VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo = {
         .sType      = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
         .pNext      = nullptr,
@@ -710,6 +710,7 @@ void Renderer::allocateOffscreenResourcesMemory() {
 }
 
 void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
+    // Create the off-screen images.
     VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -733,6 +734,21 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
 
         vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
     }
+
+    // Allocate the off-screen images memory.
+    VkMemoryRequirements memoryRequirements;
+    vkGetImageMemoryRequirements(device.logical, offscreenImages[0], &memoryRequirements);
+
+    uint32_t memoryTypeIndex = device.getMemoryTypeIndex(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    VkMemoryAllocateInfo memoryAllocateInfo = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext           = nullptr,
+        .allocationSize  = framesInFlight * memoryRequirements.size,
+        .memoryTypeIndex = memoryTypeIndex
+    };
+
+    vkAllocateMemory(device.logical, &memoryAllocateInfo, nullptr, &offscreenImagesMemory);
 }
 
 void Renderer::createFrameResources(VkDevice device) {
@@ -792,6 +808,8 @@ void Renderer::freeOffscreenResourcesMemory() {
 }
 
 void Renderer::destroyOffscreenResources(VkDevice device) {
+    vkFreeMemory(device, offscreenImagesMemory, nullptr);
+
     for (uint32_t i = 0; i < framesInFlight; ++i) {
         vkDestroyImage(device, offscreenImages[i], nullptr);
     }

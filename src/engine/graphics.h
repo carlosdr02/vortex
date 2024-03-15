@@ -81,6 +81,7 @@ private:
     VkFramebuffer* framebuffers;
     uint32_t framesInFlight;
     VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
     VkCommandBuffer* commandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
