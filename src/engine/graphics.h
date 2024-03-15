@@ -48,7 +48,7 @@ private:
     VkBuffer buffer;
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format);
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 
 struct RendererCreateInfo {

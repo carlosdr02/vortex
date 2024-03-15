@@ -323,18 +323,17 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp) {
     VkAttachmentDescription2 attachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
         .flags          = 0,
         .format         = format,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .loadOp         = loadOp,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
         .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     };
 
@@ -366,8 +365,6 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
 
     memoryBarriers[0].sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
     memoryBarriers[0].pNext         = nullptr;
-    memoryBarriers[0].srcStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
     memoryBarriers[0].dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     memoryBarriers[0].dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
@@ -407,6 +404,27 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
         .correlatedViewMaskCount = 0,
         .pCorrelatedViewMasks    = nullptr
     };
+
+    switch (loadOp) {
+        case VK_ATTACHMENT_LOAD_OP_LOAD:
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+            break;
+
+        case VK_ATTACHMENT_LOAD_OP_CLEAR:
+            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+
+            break;
+
+        default:
+            return VK_NULL_HANDLE;
+    }
 
     VkRenderPass renderPass;
     vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
