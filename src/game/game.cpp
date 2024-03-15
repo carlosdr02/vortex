@@ -51,7 +51,7 @@ void Game::run() {
             renderer.waitIdle(device.logical);
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
-            renderer.resize(device.logical, rendererCreateInfo);
+            renderer.resize(device, rendererCreateInfo);
         }
     }
 }

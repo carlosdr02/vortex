@@ -69,8 +69,8 @@ public:
 
     void waitIdle(VkDevice device);
 
-    void resize(VkDevice device, const RendererCreateInfo& createInfo);
-    void setFramesInFlight(VkDevice device, const RendererCreateInfo& createInfo);
+    void resize(Device& device, const RendererCreateInfo& createInfo);
+    void setFramesInFlight(Device& device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
@@ -91,7 +91,7 @@ private:
     void allocateSwapchainResourcesMemory();
     void createSwapchainResources(VkDevice device, const RendererCreateInfo& createInfo);
     void allocateOffscreenResourcesMemory();
-    void createOffscreenResources(VkDevice device, const RendererCreateInfo& createInfo);
+    void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
     void createFrameResources(VkDevice device);
 
     void freeSwapchainResourcesMemory();

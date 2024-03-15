@@ -474,7 +474,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
     allocateOffscreenResourcesMemory();
-    createOffscreenResources(device.logical, createInfo);
+    createOffscreenResources(device, createInfo);
     createFrameResources(device.logical);
 }
 
@@ -591,22 +591,22 @@ void Renderer::waitIdle(VkDevice device) {
     vkWaitForFences(device, framesInFlight, fences, VK_TRUE, UINT64_MAX);
 }
 
-void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
-    destroyOffscreenResources(device);
-    destroySwapchainResources(device);
+void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
+    destroyOffscreenResources(device.logical);
+    destroySwapchainResources(device.logical);
 
     // Store the old swapchain.
     VkSwapchainKHR oldSwapchain = swapchain;
 
     // Create the new swapchain.
-    createSwapchain(device, createInfo, oldSwapchain);
+    createSwapchain(device.logical, createInfo, oldSwapchain);
 
     // Destroy the old swapchain.
-    vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
+    vkDestroySwapchainKHR(device.logical, oldSwapchain, nullptr);
 
     // Reallocate the host memory only if the number of swapchain images has changed.
     uint32_t swapchainImageCount;
-    vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr);
+    vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
     if (swapchainImageCount != this->swapchainImageCount) {
         freeSwapchainResourcesMemory();
@@ -616,13 +616,13 @@ void Renderer::resize(VkDevice device, const RendererCreateInfo& createInfo) {
         allocateSwapchainResourcesMemory();
     }
 
-    createSwapchainResources(device, createInfo);
+    createSwapchainResources(device.logical, createInfo);
     createOffscreenResources(device, createInfo);
 }
 
-void Renderer::setFramesInFlight(VkDevice device, const RendererCreateInfo& createInfo) {
-    destroyFrameResources(device);
-    destroyOffscreenResources(device);
+void Renderer::setFramesInFlight(Device& device, const RendererCreateInfo& createInfo) {
+    destroyFrameResources(device.logical);
+    destroyOffscreenResources(device.logical);
     freeOffscreenResourcesMemory();
 
     framesInFlight = createInfo.framesInFlight;
@@ -630,7 +630,7 @@ void Renderer::setFramesInFlight(VkDevice device, const RendererCreateInfo& crea
 
     allocateOffscreenResourcesMemory();
     createOffscreenResources(device, createInfo);
-    createFrameResources(device);
+    createFrameResources(device.logical);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -709,7 +709,7 @@ void Renderer::allocateOffscreenResourcesMemory() {
     offscreenImages = new VkImage[framesInFlight];
 }
 
-void Renderer::createOffscreenResources(VkDevice device, const RendererCreateInfo& createInfo) {
+void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
     VkExtent2D extent = createInfo.surfaceCapabilities->currentExtent;
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -731,7 +731,7 @@ void Renderer::createOffscreenResources(VkDevice device, const RendererCreateInf
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED // TODO
         };
 
-        vkCreateImage(device, &imageCreateInfo, nullptr, &offscreenImages[i]);
+        vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
     }
 }
 
