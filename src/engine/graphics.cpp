@@ -391,6 +391,19 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoad
     subpassDependencies[1].dependencyFlags = 0;
     subpassDependencies[1].viewOffset      = 0;
 
+    if (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+        memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
+    }
+    else if (loadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
+        attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
+        memoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    }
+
     VkRenderPassCreateInfo2 renderPassCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
         .pNext                   = nullptr,
@@ -404,27 +417,6 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoad
         .correlatedViewMaskCount = 0,
         .pCorrelatedViewMasks    = nullptr
     };
-
-    switch (loadOp) {
-        case VK_ATTACHMENT_LOAD_OP_LOAD:
-            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
-            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-
-            break;
-
-        case VK_ATTACHMENT_LOAD_OP_CLEAR:
-            attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-            memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-            memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
-
-            break;
-
-        default:
-            return VK_NULL_HANDLE;
-    }
 
     VkRenderPass renderPass;
     vkCreateRenderPass2(device, &renderPassCreateInfo, nullptr, &renderPass);
