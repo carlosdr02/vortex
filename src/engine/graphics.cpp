@@ -450,15 +450,19 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
 {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
-    // Create the command pool.
+    // Create the command pools.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext            = nullptr,
-        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .flags            = 0,
         .queueFamilyIndex = device.renderQueue.familyIndex
     };
 
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &normalCommandPool);
+
+    commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &transientCommandPool);
 
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
@@ -477,7 +481,8 @@ void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
 
-    vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyCommandPool(device, transientCommandPool, nullptr);
+    vkDestroyCommandPool(device, normalCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
@@ -497,7 +502,7 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         .pInheritanceInfo = nullptr
     };
 
-    vkBeginCommandBuffer(commandBuffers[frameIndex], &commandBufferBeginInfo);
+    vkBeginCommandBuffer(transientCommandBuffers[frameIndex], &commandBufferBeginInfo);
 
     VkClearValue clearValue = {
         0.0f, 0.0f, 0.0f, 1.0f
@@ -513,14 +518,14 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         .pClearValues    = &clearValue
     };
 
-    vkCmdBeginRenderPass(commandBuffers[frameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass(transientCommandBuffers[frameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     ImDrawData* drawData = ImGui::GetDrawData();
-    ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffers[frameIndex]);
+    ImGui_ImplVulkan_RenderDrawData(drawData, transientCommandBuffers[frameIndex]);
 
-    vkCmdEndRenderPass(commandBuffers[frameIndex]);
+    vkCmdEndRenderPass(transientCommandBuffers[frameIndex]);
 
-    vkEndCommandBuffer(commandBuffers[frameIndex]);
+    vkEndCommandBuffer(transientCommandBuffers[frameIndex]);
 
     vkResetFences(device.logical, 1, &fences[frameIndex]);
 
@@ -543,7 +548,7 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
         .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext         = nullptr,
-        .commandBuffer = commandBuffers[frameIndex],
+        .commandBuffer = transientCommandBuffers[frameIndex],
         .deviceMask    = 0
     };
 
@@ -777,17 +782,17 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
 
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
-    commandBuffers = new VkCommandBuffer[framesInFlight];
+    transientCommandBuffers = new VkCommandBuffer[framesInFlight];
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext              = nullptr,
-        .commandPool        = commandPool,
+        .commandPool        = transientCommandPool,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = framesInFlight
     };
 
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffers);
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
 
     // Create the semaphores and fences.
     imageAvailableSemaphores = new VkSemaphore[framesInFlight];
@@ -855,7 +860,7 @@ void Renderer::destroyFrameResources(VkDevice device) {
     delete[] renderFinishedSemaphores;
     delete[] imageAvailableSemaphores;
 
-    vkFreeCommandBuffers(device, commandPool, framesInFlight, commandBuffers);
+    vkFreeCommandBuffers(device, transientCommandPool, framesInFlight, transientCommandBuffers);
 
-    delete[] commandBuffers;
+    delete[] transientCommandBuffers;
 }
