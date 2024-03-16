@@ -782,15 +782,20 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
 
 void Renderer::createFrameResources(VkDevice device) {
     // Allocate the command buffers.
+    normalCommandBuffers = new VkCommandBuffer[framesInFlight];
     transientCommandBuffers = new VkCommandBuffer[framesInFlight];
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext              = nullptr,
-        .commandPool        = transientCommandPool,
+        .commandPool        = normalCommandPool,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = framesInFlight
     };
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, normalCommandBuffers);
+
+    commandBufferAllocateInfo.commandPool = transientCommandPool;
 
     vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
 
@@ -861,6 +866,8 @@ void Renderer::destroyFrameResources(VkDevice device) {
     delete[] imageAvailableSemaphores;
 
     vkFreeCommandBuffers(device, transientCommandPool, framesInFlight, transientCommandBuffers);
+    vkFreeCommandBuffers(device, normalCommandPool, framesInFlight, normalCommandBuffers);
 
     delete[] transientCommandBuffers;
+    delete[] normalCommandBuffers;
 }
