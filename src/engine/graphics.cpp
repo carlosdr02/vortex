@@ -573,6 +573,58 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     vkBeginCommandBuffer(transientCommandBuffers[frameIndex], &commandBufferBeginInfo);
 
+    VkImageMemoryBarrier2 imageMemoryBarrier = {
+        .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext               = nullptr,
+        .srcStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .srcAccessMask       = VK_ACCESS_2_NONE,
+        .dstStageMask        = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+        .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image               = swapchainImages[imageIndex],
+        .subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+    };
+
+    VkDependencyInfo dependencyInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext                    = nullptr,
+        .dependencyFlags          = 0,
+        .memoryBarrierCount       = 0,
+        .pMemoryBarriers          = nullptr,
+        .bufferMemoryBarrierCount = 0,
+        .pBufferMemoryBarriers    = nullptr,
+        .imageMemoryBarrierCount  = 1,
+        .pImageMemoryBarriers     = &imageMemoryBarrier
+    };
+
+    vkCmdPipelineBarrier2(transientCommandBuffers[frameIndex], &dependencyInfo);
+
+    VkImageBlit2 imageBlit = {
+        .sType          = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+        .pNext          = nullptr,
+        .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .srcOffsets     = { { 0, 0, 0 }, { (int32_t)extent.width, (int32_t)extent.height, 1 } },
+        .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+        .dstOffsets     = { { 0, (int32_t)extent.height, 0 }, { (int32_t)extent.width, 0, 1 } }
+    };
+
+    VkBlitImageInfo2 blitImageInfo = {
+        .sType          = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+        .pNext          = nullptr,
+        .srcImage       = offscreenImages[frameIndex],
+        .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        .dstImage       = swapchainImages[imageIndex],
+        .dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        .regionCount    = 1,
+        .pRegions       = &imageBlit,
+        .filter         = VK_FILTER_NEAREST
+    };
+
+    vkCmdBlitImage2(transientCommandBuffers[frameIndex], &blitImageInfo);
+
     VkClearValue clearValue = {
         0.0f, 0.0f, 0.0f, 1.0f
     };
@@ -604,7 +656,7 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     semaphoreSubmitInfos[0].pNext       = nullptr;
     semaphoreSubmitInfos[0].semaphore   = imageAvailableSemaphores[frameIndex];
     semaphoreSubmitInfos[0].value       = 0;
-    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
     semaphoreSubmitInfos[0].deviceIndex = 0;
 
     semaphoreSubmitInfos[1].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -614,12 +666,17 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     semaphoreSubmitInfos[1].stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     semaphoreSubmitInfos[1].deviceIndex = 0;
 
-    VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
-        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-        .pNext         = nullptr,
-        .commandBuffer = transientCommandBuffers[frameIndex],
-        .deviceMask    = 0
-    };
+    VkCommandBufferSubmitInfo commandBufferSubmitInfos[2];
+
+    commandBufferSubmitInfos[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    commandBufferSubmitInfos[0].pNext         = nullptr;
+    commandBufferSubmitInfos[0].commandBuffer = normalCommandBuffers[frameIndex];
+    commandBufferSubmitInfos[0].deviceMask    = 0;
+
+    commandBufferSubmitInfos[1].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    commandBufferSubmitInfos[1].pNext         = nullptr;
+    commandBufferSubmitInfos[1].commandBuffer = transientCommandBuffers[frameIndex];
+    commandBufferSubmitInfos[1].deviceMask    = 0;
 
     VkSubmitInfo2 submitInfo = {
         .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
@@ -627,8 +684,8 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         .flags                    = 0,
         .waitSemaphoreInfoCount   = 1,
         .pWaitSemaphoreInfos      = &semaphoreSubmitInfos[0],
-        .commandBufferInfoCount   = 1,
-        .pCommandBufferInfos      = &commandBufferSubmitInfo,
+        .commandBufferInfoCount   = ARRAY_SIZE(commandBufferSubmitInfos),
+        .pCommandBufferInfos      = commandBufferSubmitInfos,
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos    = &semaphoreSubmitInfos[1]
     };
@@ -792,7 +849,7 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
