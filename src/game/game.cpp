@@ -34,6 +34,8 @@ Game::~Game() {
 }
 
 void Game::run() {
+    renderer.recordCommandBuffers(device.logical);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -52,6 +54,7 @@ void Game::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical);
         }
     }
 }
@@ -67,7 +70,7 @@ void Game::createEngineResources() {
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
     surfaceFormat = device.getSurfaceFormat(surface);
-    renderPass = createRenderPass(device.logical, surfaceFormat.format, VK_ATTACHMENT_LOAD_OP_CLEAR);
+    renderPass = createRenderPass(device.logical, surfaceFormat.format, VK_ATTACHMENT_LOAD_OP_LOAD);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
