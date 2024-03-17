@@ -486,6 +486,75 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
+void Renderer::recordCommandBuffers(VkDevice device) {
+    vkResetCommandPool(device, normalCommandPool, 0);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkCommandBufferBeginInfo commandBufferBeginInfo = {
+            .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext            = nullptr,
+            .flags            = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        vkBeginCommandBuffer(normalCommandBuffers[i], &commandBufferBeginInfo);
+
+        VkImageMemoryBarrier2 imageMemoryBarrier = {
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext               = nullptr,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+            .srcAccessMask       = VK_ACCESS_2_NONE,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+            .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image               = offscreenImages[i],
+            .subresourceRange    = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
+        };
+
+        VkDependencyInfo dependencyInfo = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext                    = nullptr,
+            .dependencyFlags          = 0,
+            .memoryBarrierCount       = 0,
+            .pMemoryBarriers          = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers    = nullptr,
+            .imageMemoryBarrierCount  = 1,
+            .pImageMemoryBarriers     = &imageMemoryBarrier
+        };
+
+        vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
+
+        VkClearColorValue clearColorValue = {
+            0.5f, 0.0f, 1.0f, 1.0f
+        };
+
+        VkImageSubresourceRange imageSubresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1
+        };
+
+        vkCmdClearColorImage(normalCommandBuffers[i], offscreenImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColorValue, 1, &imageSubresourceRange);
+
+        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT;
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+        imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
+        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+        vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
+
+        vkEndCommandBuffer(normalCommandBuffers[i]);
+    }
+}
+
 bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent) {
     vkWaitForFences(device.logical, 1, &fences[frameIndex], VK_TRUE, UINT64_MAX);
 
@@ -704,7 +773,7 @@ void Renderer::createSwapchainResources(VkDevice device, const RendererCreateInf
 
 void Renderer::allocateOffscreenResourcesMemory() {
     offscreenImages = new VkImage[framesInFlight];
-    offscreenImageViews = new VkImageView[framesInFlight];
+    //offscreenImageViews = new VkImageView[framesInFlight];
 }
 
 void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -776,7 +845,7 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
 
-        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
+        //vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
     }
 }
 
@@ -838,13 +907,13 @@ void Renderer::destroySwapchainResources(VkDevice device) {
 }
 
 void Renderer::freeOffscreenResourcesMemory() {
-    delete[] offscreenImageViews;
+    //delete[] offscreenImageViews;
     delete[] offscreenImages;
 }
 
 void Renderer::destroyOffscreenResources(VkDevice device) {
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+        //vkDestroyImageView(device, offscreenImageViews[i], nullptr);
     }
 
     vkFreeMemory(device, offscreenImagesMemory, nullptr);
