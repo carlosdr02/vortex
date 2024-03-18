@@ -564,6 +564,8 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
         return false;
     }
 
+    vkResetFences(device.logical, 1, &fences[frameIndex]);
+
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .pNext            = nullptr,
@@ -647,8 +649,6 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
     vkCmdEndRenderPass(transientCommandBuffers[frameIndex]);
 
     vkEndCommandBuffer(transientCommandBuffers[frameIndex]);
-
-    vkResetFences(device.logical, 1, &fences[frameIndex]);
 
     VkSemaphoreSubmitInfo semaphoreSubmitInfos[2];
 
