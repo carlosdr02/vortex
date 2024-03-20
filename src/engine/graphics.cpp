@@ -952,7 +952,7 @@ void Renderer::createFrameResources(VkDevice device) {
 
 void Renderer::allocateOffscreenResourcesMemory() {
     offscreenImages = new VkImage[framesInFlight];
-    //offscreenImageViews = new VkImageView[framesInFlight];
+    offscreenImageViews = new VkImageView[framesInFlight];
 }
 
 void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -971,11 +971,11 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
-            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED // TODO
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
         };
 
         vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
@@ -1024,8 +1024,34 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
 
-        //vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
     }
+
+    // Update the descriptor sets.
+    VkDescriptorImageInfo* descriptorImageInfos = new VkDescriptorImageInfo[framesInFlight];
+    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        descriptorImageInfos[i].sampler     = VK_NULL_HANDLE;
+        descriptorImageInfos[i].imageView   = offscreenImageViews[i];
+        descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[i].pNext            = nullptr;
+        writeDescriptorSets[i].dstSet           = descriptorSets[i];
+        writeDescriptorSets[i].dstBinding       = 0;
+        writeDescriptorSets[i].dstArrayElement  = 0;
+        writeDescriptorSets[i].descriptorCount  = 1;
+        writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[i].pImageInfo       = &descriptorImageInfos[i];
+        writeDescriptorSets[i].pBufferInfo      = nullptr;
+        writeDescriptorSets[i].pTexelBufferView = nullptr;
+    }
+
+    vkUpdateDescriptorSets(device.logical, framesInFlight, writeDescriptorSets, 0, nullptr);
+
+    delete[] writeDescriptorSets;
+    delete[] descriptorImageInfos;
 }
 
 void Renderer::freeSwapchainResourcesMemory() {
@@ -1063,13 +1089,13 @@ void Renderer::destroyFrameResources(VkDevice device) {
 }
 
 void Renderer::freeOffscreenResourcesMemory() {
-    //delete[] offscreenImageViews;
+    delete[] offscreenImageViews;
     delete[] offscreenImages;
 }
 
 void Renderer::destroyOffscreenResources(VkDevice device) {
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        //vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+        vkDestroyImageView(device, offscreenImageViews[i], nullptr);
     }
 
     vkFreeMemory(device, offscreenImagesMemory, nullptr);
