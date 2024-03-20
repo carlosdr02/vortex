@@ -952,6 +952,22 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
 }
 
 void Renderer::createFrameResources(VkDevice device) {
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = framesInFlight,
+        .poolSizeCount = ARRAY_SIZE(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
+    };
+
+    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
     // Allocate the command buffers.
     normalCommandBuffers = new VkCommandBuffer[framesInFlight];
     transientCommandBuffers = new VkCommandBuffer[framesInFlight];
@@ -1041,4 +1057,6 @@ void Renderer::destroyFrameResources(VkDevice device) {
 
     delete[] transientCommandBuffers;
     delete[] normalCommandBuffers;
+
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }

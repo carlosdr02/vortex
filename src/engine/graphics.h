@@ -86,6 +86,7 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
+    VkDescriptorPool descriptorPool;
     VkCommandBuffer* normalCommandBuffers;
     VkCommandBuffer* transientCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
