@@ -325,14 +325,13 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp) {
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear) {
     VkAttachmentDescription2 attachmentDescription = {
         .sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
         .pNext          = nullptr,
         .flags          = 0,
         .format         = format,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp         = loadOp,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
         .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -393,13 +392,15 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoad
     subpassDependencies[1].dependencyFlags = 0;
     subpassDependencies[1].viewOffset      = 0;
 
-    if (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+    if (clear) {
+        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
         memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
     }
-    else if (loadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
+    else {
+        attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
         memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_BLIT_BIT;
@@ -483,7 +484,7 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
         .pBindings    = &descriptorSetLayoutBinding
     };
 
-    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &perFrameDescriptorSetLayout);
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
 
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
@@ -502,7 +503,7 @@ void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
 
-    vkDestroyDescriptorSetLayout(device, perFrameDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyCommandPool(device, transientCommandPool, nullptr);
     vkDestroyCommandPool(device, normalCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -883,7 +884,7 @@ void Renderer::createFrameResources(VkDevice device) {
     // Allocate the descriptor sets.
     descriptorSets = new VkDescriptorSet[framesInFlight];
 
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, perFrameDescriptorSetLayout);
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, descriptorSetLayout);
 
     VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,

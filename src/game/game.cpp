@@ -70,7 +70,7 @@ void Game::createEngineResources() {
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
     surfaceFormat = device.getSurfaceFormat(surface);
-    renderPass = createRenderPass(device.logical, surfaceFormat.format, VK_ATTACHMENT_LOAD_OP_LOAD);
+    renderPass = createRenderPass(device.logical, surfaceFormat.format, false);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();

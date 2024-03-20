@@ -48,7 +48,7 @@ private:
     VkBuffer buffer;
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp);
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 
 struct RendererCreateInfo {
@@ -77,7 +77,7 @@ private:
     VkSwapchainKHR swapchain;
     VkCommandPool normalCommandPool;
     VkCommandPool transientCommandPool;
-    VkDescriptorSetLayout perFrameDescriptorSetLayout;
+    VkDescriptorSetLayout descriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
