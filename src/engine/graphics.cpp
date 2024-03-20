@@ -524,12 +524,12 @@ void Renderer::recordCommandBuffers(VkDevice device) {
         VkImageMemoryBarrier2 imageMemoryBarrier = {
             .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .pNext               = nullptr,
-            .srcStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_NONE,
             .srcAccessMask       = VK_ACCESS_2_NONE,
-            .dstStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-            .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
             .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .image               = offscreenImages[i],
@@ -550,25 +550,13 @@ void Renderer::recordCommandBuffers(VkDevice device) {
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
 
-        VkClearColorValue clearColorValue = {
-            0.5f, 0.0f, 1.0f, 1.0f
-        };
+        // TODO: Bind descriptor sets.
 
-        VkImageSubresourceRange imageSubresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
-
-        vkCmdClearColorImage(normalCommandBuffers[i], offscreenImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColorValue, 1, &imageSubresourceRange);
-
-        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT;
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
         imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
@@ -971,7 +959,7 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
