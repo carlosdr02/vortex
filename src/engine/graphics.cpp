@@ -555,6 +555,17 @@ void Renderer::recordCommandBuffers(VkDevice device) {
     }
 }
 
+// note: i gotta test which of the following approaches is more efficient:
+//
+// 1. prefer fast CPU time by prerecording the swapchain image memory barriers
+//    into new command buffers.
+//
+// 2. prefer fast GPU time by batching the last off-screen image memory barrier
+//    and the first swapchain image memory barrier into the same
+//    vkCmdPipelineBarrier2 call, recorded every frame.
+//
+// there is no point in testing that right now since the application has a
+// really low workload, i gotta revisit this when the rendering is more complex.
 bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent) {
     vkWaitForFences(device.logical, 1, &fences[frameIndex], VK_TRUE, UINT64_MAX);
 
@@ -650,47 +661,61 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     vkEndCommandBuffer(transientCommandBuffers[frameIndex]);
 
-    VkSemaphoreSubmitInfo semaphoreSubmitInfos[2];
-
-    semaphoreSubmitInfos[0].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    semaphoreSubmitInfos[0].pNext       = nullptr;
-    semaphoreSubmitInfos[0].semaphore   = imageAvailableSemaphores[frameIndex];
-    semaphoreSubmitInfos[0].value       = 0;
-    semaphoreSubmitInfos[0].stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT;
-    semaphoreSubmitInfos[0].deviceIndex = 0;
-
-    semaphoreSubmitInfos[1].sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    semaphoreSubmitInfos[1].pNext       = nullptr;
-    semaphoreSubmitInfos[1].semaphore   = renderFinishedSemaphores[frameIndex];
-    semaphoreSubmitInfos[1].value       = 0;
-    semaphoreSubmitInfos[1].stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    semaphoreSubmitInfos[1].deviceIndex = 0;
-
-    VkCommandBufferSubmitInfo commandBufferSubmitInfos[2];
-
-    commandBufferSubmitInfos[0].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-    commandBufferSubmitInfos[0].pNext         = nullptr;
-    commandBufferSubmitInfos[0].commandBuffer = normalCommandBuffers[frameIndex];
-    commandBufferSubmitInfos[0].deviceMask    = 0;
-
-    commandBufferSubmitInfos[1].sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
-    commandBufferSubmitInfos[1].pNext         = nullptr;
-    commandBufferSubmitInfos[1].commandBuffer = transientCommandBuffers[frameIndex];
-    commandBufferSubmitInfos[1].deviceMask    = 0;
-
-    VkSubmitInfo2 submitInfo = {
-        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-        .pNext                    = nullptr,
-        .flags                    = 0,
-        .waitSemaphoreInfoCount   = 1,
-        .pWaitSemaphoreInfos      = &semaphoreSubmitInfos[0],
-        .commandBufferInfoCount   = ARRAY_SIZE(commandBufferSubmitInfos),
-        .pCommandBufferInfos      = commandBufferSubmitInfos,
-        .signalSemaphoreInfoCount = 1,
-        .pSignalSemaphoreInfos    = &semaphoreSubmitInfos[1]
+    VkSemaphoreSubmitInfo waitSemaphoreInfo = {
+        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext       = nullptr,
+        .semaphore   = imageAvailableSemaphores[frameIndex],
+        .value       = 0,
+        .stageMask   = VK_PIPELINE_STAGE_2_BLIT_BIT,
+        .deviceIndex = 0
     };
 
-    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, fences[frameIndex]);
+    VkSemaphoreSubmitInfo signalSemaphoreInfo = {
+        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext       = nullptr,
+        .semaphore   = renderFinishedSemaphores[frameIndex],
+        .value       = 0,
+        .stageMask   = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .deviceIndex = 0
+    };
+
+    VkCommandBufferSubmitInfo normalCommandBufferInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = normalCommandBuffers[frameIndex],
+        .deviceMask    = 0
+    };
+
+    VkCommandBufferSubmitInfo transientCommandBufferInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = transientCommandBuffers[frameIndex],
+        .deviceMask    = 0
+    };
+
+    VkSubmitInfo2 submitInfos[2];
+
+    submitInfos[0].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfos[0].pNext                    = nullptr;
+    submitInfos[0].flags                    = 0;
+    submitInfos[0].waitSemaphoreInfoCount   = 0;
+    submitInfos[0].pWaitSemaphoreInfos      = nullptr;
+    submitInfos[0].commandBufferInfoCount   = 1;
+    submitInfos[0].pCommandBufferInfos      = &normalCommandBufferInfo;
+    submitInfos[0].signalSemaphoreInfoCount = 0;
+    submitInfos[0].pSignalSemaphoreInfos    = nullptr;
+
+    submitInfos[1].sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfos[1].pNext                    = nullptr;
+    submitInfos[1].flags                    = 0;
+    submitInfos[1].waitSemaphoreInfoCount   = 1;
+    submitInfos[1].pWaitSemaphoreInfos      = &waitSemaphoreInfo;
+    submitInfos[1].commandBufferInfoCount   = 1;
+    submitInfos[1].pCommandBufferInfos      = &transientCommandBufferInfo;
+    submitInfos[1].signalSemaphoreInfoCount = 1;
+    submitInfos[1].pSignalSemaphoreInfos    = &signalSemaphoreInfo;
+
+    vkQueueSubmit2(device.renderQueue, ARRAY_SIZE(submitInfos), submitInfos, fences[frameIndex]);
 
     VkPresentInfoKHR presentInfo = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
