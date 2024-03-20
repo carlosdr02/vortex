@@ -1,16 +1,27 @@
 #include "game.h"
 
+#include <imgui_impl_vulkan.h>
+#include <imgui_impl_glfw.h>
+
+#include "gui.h"
+
 Game::Game() {
     glfwInit();
 
     createWindow();
     createEngineResources();
+    createGuiResources();
 }
 
 Game::~Game() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
 
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
     device.destroy();
@@ -23,8 +34,12 @@ Game::~Game() {
 }
 
 void Game::run() {
+    renderer.recordCommandBuffers(device.logical);
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        renderGui();
 
         if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
             int width, height;
@@ -38,7 +53,8 @@ void Game::run() {
             renderer.waitIdle(device.logical);
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
-            renderer.resize(device.logical, rendererCreateInfo);
+            renderer.resize(device, rendererCreateInfo);
+            renderer.recordCommandBuffers(device.logical);
         }
     }
 }
@@ -54,10 +70,38 @@ void Game::createEngineResources() {
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
     surfaceFormat = device.getSurfaceFormat(surface);
-    renderPass = createRenderPass(device.logical, surfaceFormat.format);
+    renderPass = createRenderPass(device.logical, surfaceFormat.format, VK_ATTACHMENT_LOAD_OP_LOAD);
+    guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
     renderer = Renderer(device, rendererCreateInfo);
+}
+
+void Game::createGuiResources() {
+    ImGui::CreateContext();
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {
+        .Instance            = instance,
+        .PhysicalDevice      = device.physical,
+        .Device              = device.logical,
+        .QueueFamily         = device.renderQueue.familyIndex,
+        .Queue               = device.renderQueue,
+        .DescriptorPool      = guiDescriptorPool,
+        .RenderPass          = renderPass,
+        .MinImageCount       = surfaceCapabilities.minImageCount,
+        .ImageCount          = surfaceCapabilities.minImageCount,
+        .MSAASamples         = VK_SAMPLE_COUNT_1_BIT,
+        .PipelineCache       = VK_NULL_HANDLE,
+        .Subpass             = 0,
+        .UseDynamicRendering = false,
+        .Allocator           = nullptr,
+        .CheckVkResultFn     = nullptr,
+        .MinAllocationSize   = 0
+    };
+
+    ImGui_ImplVulkan_Init(&initInfo);
 }
 
 RendererCreateInfo Game::getRendererCreateInfo() {

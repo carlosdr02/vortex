@@ -48,7 +48,8 @@ private:
     VkBuffer buffer;
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format);
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp);
+VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
@@ -64,33 +65,43 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
+    void recordCommandBuffers(VkDevice device);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
 
-    void resize(VkDevice device, const RendererCreateInfo& createInfo);
-    void setFramesInFlight(VkDevice device, uint32_t framesInFlight);
+    void resize(Device& device, const RendererCreateInfo& createInfo);
+    void setFramesInFlight(Device& device, const RendererCreateInfo& createInfo);
 
 private:
     VkSwapchainKHR swapchain;
-    VkCommandPool commandPool;
+    VkCommandPool normalCommandPool;
+    VkCommandPool transientCommandPool;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
     VkFramebuffer* framebuffers;
     uint32_t framesInFlight;
-    VkCommandBuffer* commandBuffers;
+    VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
+    VkCommandBuffer* normalCommandBuffers;
+    VkCommandBuffer* transientCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
     VkFence* fences;
     uint32_t frameIndex;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
-    void allocateSwapchainResourcesHostMemory();
+    void allocateSwapchainResourcesMemory();
     void createSwapchainResources(VkDevice device, const RendererCreateInfo& createInfo);
+    void allocateOffscreenResourcesMemory();
+    void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
     void createFrameResources(VkDevice device);
 
-    void freeSwapchainResourcesHostMemory();
+    void freeSwapchainResourcesMemory();
     void destroySwapchainResources(VkDevice device);
+    void freeOffscreenResourcesMemory();
+    void destroyOffscreenResources(VkDevice device);
     void destroyFrameResources(VkDevice device);
 };

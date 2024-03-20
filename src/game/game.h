@@ -17,10 +17,12 @@ private:
     VkSurfaceCapabilitiesKHR surfaceCapabilities;
     VkSurfaceFormatKHR surfaceFormat;
     VkRenderPass renderPass;
+    VkDescriptorPool guiDescriptorPool;
     Renderer renderer;
 
     void createWindow();
     void createEngineResources();
+    void createGuiResources();
 
     RendererCreateInfo getRendererCreateInfo();
 };
