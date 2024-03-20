@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <vector>
+
 #include <imgui_impl_vulkan.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
@@ -968,6 +970,21 @@ void Renderer::createFrameResources(VkDevice device) {
 
     vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
 
+    // Allocate the descriptor sets.
+    descriptorSets = new VkDescriptorSet[framesInFlight];
+
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, perFrameDescriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = framesInFlight,
+        .pSetLayouts        = descriptorSetLayouts.data()
+    };
+
+    vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets);
+
     // Allocate the command buffers.
     normalCommandBuffers = new VkCommandBuffer[framesInFlight];
     transientCommandBuffers = new VkCommandBuffer[framesInFlight];
@@ -1057,6 +1074,7 @@ void Renderer::destroyFrameResources(VkDevice device) {
 
     delete[] transientCommandBuffers;
     delete[] normalCommandBuffers;
+    delete[] descriptorSets;
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
