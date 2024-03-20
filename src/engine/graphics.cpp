@@ -490,15 +490,15 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
 
     allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
+    createFrameResources(device.logical);
     allocateOffscreenResourcesMemory();
     createOffscreenResources(device, createInfo);
-    createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
-    destroyFrameResources(device);
     destroyOffscreenResources(device);
     freeOffscreenResourcesMemory();
+    destroyFrameResources(device);
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
 
@@ -791,16 +791,16 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
 }
 
 void Renderer::setFramesInFlight(Device& device, const RendererCreateInfo& createInfo) {
-    destroyFrameResources(device.logical);
     destroyOffscreenResources(device.logical);
     freeOffscreenResourcesMemory();
+    destroyFrameResources(device.logical);
 
     framesInFlight = createInfo.framesInFlight;
     frameIndex = 0;
 
+    createFrameResources(device.logical);
     allocateOffscreenResourcesMemory();
     createOffscreenResources(device, createInfo);
-    createFrameResources(device.logical);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -872,6 +872,81 @@ void Renderer::createSwapchainResources(VkDevice device, const RendererCreateInf
         };
 
         vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffers[i]);
+    }
+}
+
+void Renderer::createFrameResources(VkDevice device) {
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = framesInFlight,
+        .poolSizeCount = ARRAY_SIZE(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
+    };
+
+    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Allocate the descriptor sets.
+    descriptorSets = new VkDescriptorSet[framesInFlight];
+
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, perFrameDescriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = framesInFlight,
+        .pSetLayouts        = descriptorSetLayouts.data()
+    };
+
+    vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets);
+
+    // Allocate the command buffers.
+    normalCommandBuffers = new VkCommandBuffer[framesInFlight];
+    transientCommandBuffers = new VkCommandBuffer[framesInFlight];
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = normalCommandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = framesInFlight
+    };
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, normalCommandBuffers);
+
+    commandBufferAllocateInfo.commandPool = transientCommandPool;
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
+
+    // Create the semaphores and fences.
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    fences = new VkFence[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device, &fenceCreateInfo, nullptr, &fences[i]);
     }
 }
 
@@ -953,81 +1028,6 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
     }
 }
 
-void Renderer::createFrameResources(VkDevice device) {
-    // Create the descriptor pool.
-    VkDescriptorPoolSize descriptorPoolSizes[] = {
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }
-    };
-
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
-        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext         = nullptr,
-        .flags         = 0,
-        .maxSets       = framesInFlight,
-        .poolSizeCount = ARRAY_SIZE(descriptorPoolSizes),
-        .pPoolSizes    = descriptorPoolSizes
-    };
-
-    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
-
-    // Allocate the descriptor sets.
-    descriptorSets = new VkDescriptorSet[framesInFlight];
-
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, perFrameDescriptorSetLayout);
-
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .descriptorPool     = descriptorPool,
-        .descriptorSetCount = framesInFlight,
-        .pSetLayouts        = descriptorSetLayouts.data()
-    };
-
-    vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets);
-
-    // Allocate the command buffers.
-    normalCommandBuffers = new VkCommandBuffer[framesInFlight];
-    transientCommandBuffers = new VkCommandBuffer[framesInFlight];
-
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .commandPool        = normalCommandPool,
-        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = framesInFlight
-    };
-
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, normalCommandBuffers);
-
-    commandBufferAllocateInfo.commandPool = transientCommandPool;
-
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
-
-    // Create the semaphores and fences.
-    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
-    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    fences = new VkFence[framesInFlight];
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-        };
-
-        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
-        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
-
-        VkFenceCreateInfo fenceCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-        };
-
-        vkCreateFence(device, &fenceCreateInfo, nullptr, &fences[i]);
-    }
-}
-
 void Renderer::freeSwapchainResourcesMemory() {
     delete[] framebuffers;
     delete[] swapchainImageViews;
@@ -1038,23 +1038,6 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
-    }
-}
-
-void Renderer::freeOffscreenResourcesMemory() {
-    //delete[] offscreenImageViews;
-    delete[] offscreenImages;
-}
-
-void Renderer::destroyOffscreenResources(VkDevice device) {
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        //vkDestroyImageView(device, offscreenImageViews[i], nullptr);
-    }
-
-    vkFreeMemory(device, offscreenImagesMemory, nullptr);
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyImage(device, offscreenImages[i], nullptr);
     }
 }
 
@@ -1077,4 +1060,21 @@ void Renderer::destroyFrameResources(VkDevice device) {
     delete[] descriptorSets;
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+}
+
+void Renderer::freeOffscreenResourcesMemory() {
+    //delete[] offscreenImageViews;
+    delete[] offscreenImages;
+}
+
+void Renderer::destroyOffscreenResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        //vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, offscreenImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImage(device, offscreenImages[i], nullptr);
+    }
 }
