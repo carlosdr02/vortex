@@ -464,6 +464,25 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &transientCommandPool);
 
+    // Create the descriptor set layout.
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = nullptr,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &descriptorSetLayoutBinding
+    };
+
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &perFrameDescriptorSetLayout);
+
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
@@ -481,6 +500,7 @@ void Renderer::destroy(VkDevice device) {
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
 
+    vkDestroyDescriptorSetLayout(device, perFrameDescriptorSetLayout, nullptr);
     vkDestroyCommandPool(device, transientCommandPool, nullptr);
     vkDestroyCommandPool(device, normalCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);

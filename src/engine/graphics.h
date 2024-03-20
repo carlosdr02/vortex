@@ -77,6 +77,7 @@ private:
     VkSwapchainKHR swapchain;
     VkCommandPool normalCommandPool;
     VkCommandPool transientCommandPool;
+    VkDescriptorSetLayout perFrameDescriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
