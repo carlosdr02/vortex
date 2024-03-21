@@ -445,6 +445,23 @@ VkDescriptorPool createGuiDescriptorPool(VkDevice device) {
     return descriptorPool;
 }
 
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, const VkDescriptorSetLayout* setLayouts) {
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = nullptr,
+        .flags                  = 0,
+        .setLayoutCount         = setLayoutCount,
+        .pSetLayouts            = setLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr
+    };
+
+    VkPipelineLayout pipelineLayout;
+    vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+
+    return pipelineLayout;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     : framesInFlight(createInfo.framesInFlight)
     , frameIndex(0)
