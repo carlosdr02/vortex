@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <fstream>
+
 #include <imgui_impl_vulkan.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
@@ -460,6 +462,32 @@ VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, 
     vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
 
     return pipelineLayout;
+}
+
+static VkShaderModule createShaderModule(VkDevice device, const char* fileName) {
+    std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+
+    size_t codeSize = file.tellg();
+    char* code = new char[codeSize];
+
+    file.seekg(0);
+    file.read(code, codeSize);
+    file.close();
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext    = nullptr,
+        .flags    = 0,
+        .codeSize = codeSize,
+        .pCode    = (uint32_t*)code
+    };
+
+    VkShaderModule shaderModule;
+    vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &shaderModule);
+
+    delete[] code;
+
+    return shaderModule;
 }
 
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
