@@ -19,6 +19,7 @@ private:
     VkRenderPass renderPass;
     VkDescriptorPool guiDescriptorPool;
     Renderer renderer;
+    VkPipelineLayout pipelineLayout;
 
     void createWindow();
     void createEngineResources();

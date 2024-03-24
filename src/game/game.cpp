@@ -21,6 +21,7 @@ Game::~Game() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
@@ -75,6 +76,8 @@ void Game::createEngineResources() {
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
     renderer = Renderer(device, rendererCreateInfo);
+
+    pipelineLayout = createPipelineLayout(device.logical, 1, &renderer.descriptorSetLayout);
 }
 
 void Game::createGuiResources() {
