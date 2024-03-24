@@ -8,6 +8,8 @@
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
+static PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelines;
+
 VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -263,6 +265,10 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
     }
 
     return UINT32_MAX;
+}
+
+void loadFunctionPointers(VkDevice device) {
+    vkCreateRayTracingPipelines = (PFN_vkCreateRayTracingPipelinesKHR)vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR");
 }
 
 Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {

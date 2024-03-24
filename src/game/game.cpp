@@ -70,6 +70,7 @@ void Game::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
+    loadFunctionPointers(device.logical);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, surfaceFormat.format, false);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);

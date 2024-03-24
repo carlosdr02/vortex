@@ -32,6 +32,8 @@ public:
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
 
+void loadFunctionPointers(VkDevice device);
+
 class Buffer {
 public:
     VkDeviceMemory memory;
