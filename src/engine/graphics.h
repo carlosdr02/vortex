@@ -68,6 +68,8 @@ struct ShaderBindingTableEntry {
     const char* intersectionShader;
 };
 
+VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
