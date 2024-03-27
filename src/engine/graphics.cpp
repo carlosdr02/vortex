@@ -490,10 +490,7 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     return shaderModule;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
-    : framesInFlight(createInfo.framesInFlight)
-    , frameIndex(0)
-{
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the command pools.
@@ -552,7 +549,7 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::recordCommandBuffers(VkDevice device) {
+void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout) {
     vkResetCommandPool(device, normalCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -594,7 +591,7 @@ void Renderer::recordCommandBuffers(VkDevice device) {
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
 
-        // TODO: Bind descriptor sets.
+        vkCmdBindDescriptorSets(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
         imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
@@ -609,17 +606,6 @@ void Renderer::recordCommandBuffers(VkDevice device) {
     }
 }
 
-// note: i gotta test which of the following approaches is more efficient:
-//
-// 1. prefer fast CPU time by prerecording the swapchain image memory barriers
-//    into new command buffers.
-//
-// 2. prefer fast GPU time by batching the last off-screen image memory barrier
-//    and the first swapchain image memory barrier into the same
-//    vkCmdPipelineBarrier2 call, recorded every frame.
-//
-// there is no point in testing that right now since the application has a
-// really low workload, i gotta revisit this when the rendering is more complex.
 bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent) {
     vkWaitForFences(device.logical, 1, &fences[frameIndex], VK_TRUE, UINT64_MAX);
 

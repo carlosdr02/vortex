@@ -68,7 +68,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
@@ -95,7 +95,7 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
-    uint32_t frameIndex;
+    uint32_t frameIndex = 0;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void allocateSwapchainResourcesMemory();
