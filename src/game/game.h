@@ -20,6 +20,7 @@ private:
     VkDescriptorPool guiDescriptorPool;
     Renderer renderer;
     VkPipelineLayout pipelineLayout;
+    VkPipeline rayTracingPipeline;
 
     void createWindow();
     void createEngineResources();

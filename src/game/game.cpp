@@ -21,6 +21,7 @@ Game::~Game() {
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    vkDestroyPipeline(device.logical, rayTracingPipeline, nullptr);
     vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
@@ -79,6 +80,12 @@ void Game::createEngineResources() {
     renderer = Renderer(device, rendererCreateInfo);
 
     pipelineLayout = createPipelineLayout(device.logical, 1, &renderer.descriptorSetLayout);
+
+    ShaderBindingTableEntry sbtEntries[] = {
+        { .stage = SHADER_BINDING_TABLE_STAGE_RAYGEN, .generalShader = "raygen.spv" }
+    };
+
+    rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
 }
 
 void Game::createGuiResources() {
