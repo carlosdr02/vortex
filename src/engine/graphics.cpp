@@ -496,6 +496,16 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     return shaderModule;
 }
 
+static void populateShaderStageCreateInfo(VkPipelineShaderStageCreateInfo& createInfo, VkShaderStageFlagBits stage, VkShaderModule module) {
+    createInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    createInfo.pNext               = nullptr;
+    createInfo.flags               = 0;
+    createInfo.stage               = stage;
+    createInfo.module              = module;
+    createInfo.pName               = "main";
+    createInfo.pSpecializationInfo = nullptr;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
