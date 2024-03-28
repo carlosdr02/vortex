@@ -629,7 +629,7 @@ static uint32_t alignNumber(uint32_t number, uint32_t alignment) {
     return (number + alignment - 1) & ~(alignment - 1);
 }
 
-ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipeline pipeline) {
+ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries) {
     uint32_t hitGroupCount = 0;
     uint32_t missGroupCount = 0;
 

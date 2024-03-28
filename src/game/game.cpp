@@ -88,7 +88,7 @@ void Game::createEngineResources() {
     };
 
     rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
-    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries, rayTracingPipeline);
+    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
 }
 
 void Game::createGuiResources() {

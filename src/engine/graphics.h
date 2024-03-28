@@ -78,7 +78,7 @@ public:
     VkStridedDeviceAddressRegionKHR miss;
 
     ShaderBindingTable() = default;
-    ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipeline pipeline);
+    ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries);
     void destroy(VkDevice device);
 
 private:
