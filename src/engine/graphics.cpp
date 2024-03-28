@@ -9,6 +9,8 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 static PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelines;
+static PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandles;
+static PFN_vkCmdTraceRaysKHR vkCmdTraceRays;
 
 VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
@@ -280,6 +282,8 @@ uint32_t Device::getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFla
 
 void loadFunctionPointers(VkDevice device) {
     vkCreateRayTracingPipelines = (PFN_vkCreateRayTracingPipelinesKHR)vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR");
+    vkGetRayTracingShaderGroupHandles = (PFN_vkGetRayTracingShaderGroupHandlesKHR)vkGetDeviceProcAddr(device, "vkGetRayTracingShaderGroupHandlesKHR");
+    vkCmdTraceRays = (PFN_vkCmdTraceRaysKHR)vkGetDeviceProcAddr(device, "vkCmdTraceRaysKHR");
 }
 
 Buffer::Buffer(Device& device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties) {
