@@ -36,7 +36,7 @@ Game::~Game() {
 }
 
 void Game::run() {
-    renderer.recordCommandBuffers(device.logical, pipelineLayout);
+    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -56,7 +56,7 @@ void Game::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, pipelineLayout);
+            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
         }
     }
 }
