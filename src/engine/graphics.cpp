@@ -610,6 +610,10 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
     return pipeline;
 }
 
+static uint32_t alignNumber(uint32_t number, uint32_t alignment) {
+    return (number + alignment - 1) & ~(alignment - 1);
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
