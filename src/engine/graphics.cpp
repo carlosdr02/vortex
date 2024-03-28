@@ -106,6 +106,17 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     delete[] physicalDevices;
 
+    // Get the ray tracing pipeline properties.
+    rtProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+    rtProperties.pNext = nullptr;
+
+    VkPhysicalDeviceProperties2 physicalDeviceProperties = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &rtProperties
+    };
+
+    vkGetPhysicalDeviceProperties2(physical, &physicalDeviceProperties);
+
     // Select a queue family.
     uint32_t queueFamilyPropertyCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, nullptr);
