@@ -79,6 +79,7 @@ public:
 
     ShaderBindingTable() = default;
     ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipeline pipeline);
+    void destroy(VkDevice device);
 
 private:
     Buffer buffer;
