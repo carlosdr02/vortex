@@ -101,7 +101,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, ShaderBindingTable sbt, VkExtent2D extent);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, ShaderBindingTable& sbt, VkExtent2D extent);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
