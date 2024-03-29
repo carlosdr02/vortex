@@ -16,11 +16,14 @@ Game::Game() {
 Game::~Game() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
+    shaderBindingTable.destroy(device.logical);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    vkDestroyPipeline(device.logical, rayTracingPipeline, nullptr);
+    vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
 
@@ -34,14 +37,15 @@ Game::~Game() {
 }
 
 void Game::run() {
-    renderer.recordCommandBuffers(device.logical);
+    VkExtent2D extent = surfaceCapabilities.currentExtent;
+    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         renderGui();
 
-        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
+        if (!renderer.render(device, renderPass, extent)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -54,7 +58,7 @@ void Game::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical);
+            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
         }
     }
 }
@@ -69,12 +73,22 @@ void Game::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
+    loadFunctionPointers(device.logical);
     surfaceFormat = device.getSurfaceFormat(surface);
-    renderPass = createRenderPass(device.logical, surfaceFormat.format, VK_ATTACHMENT_LOAD_OP_LOAD);
+    renderPass = createRenderPass(device.logical, surfaceFormat.format, false);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
 
     RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
     renderer = Renderer(device, rendererCreateInfo);
+
+    pipelineLayout = createPipelineLayout(device.logical, 1, &renderer.descriptorSetLayout);
+
+    ShaderBindingTableEntry sbtEntries[] = {
+        { .stage = SHADER_BINDING_TABLE_STAGE_RAYGEN, .generalShader = "raygen.spv" }
+    };
+
+    rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
+    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
 }
 
 void Game::createGuiResources() {

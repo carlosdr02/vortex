@@ -19,6 +19,7 @@ private:
 class Device {
 public:
     VkPhysicalDevice physical;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
     Queue renderQueue;
     VkDevice logical;
 
@@ -31,6 +32,8 @@ public:
 
     uint32_t getMemoryTypeIndex(uint32_t memoryTypeBits, VkMemoryPropertyFlags memoryProperties);
 };
+
+void loadFunctionPointers(VkDevice device);
 
 class Buffer {
 public:
@@ -48,8 +51,39 @@ private:
     VkBuffer buffer;
 };
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format, VkAttachmentLoadOp loadOp);
+VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, const VkDescriptorSetLayout* setLayouts);
+
+enum ShaderBindingTableStage {
+    SHADER_BINDING_TABLE_STAGE_RAYGEN,
+    SHADER_BINDING_TABLE_STAGE_HIT,
+    SHADER_BINDING_TABLE_STAGE_MISS
+};
+
+struct ShaderBindingTableEntry {
+    ShaderBindingTableStage stage;
+    const char* generalShader;
+    const char* closestHitShader;
+    const char* anyHitShader;
+    const char* intersectionShader;
+};
+
+VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
+
+class ShaderBindingTable {
+public:
+    VkStridedDeviceAddressRegionKHR raygen;
+    VkStridedDeviceAddressRegionKHR hit;
+    VkStridedDeviceAddressRegionKHR miss;
+
+    ShaderBindingTable() = default;
+    ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries);
+    void destroy(VkDevice device);
+
+private:
+    Buffer buffer;
+};
 
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
@@ -61,11 +95,13 @@ struct RendererCreateInfo {
 
 class Renderer {
 public:
+    VkDescriptorSetLayout descriptorSetLayout;
+
     Renderer() = default;
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, ShaderBindingTable& sbt, VkExtent2D extent);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
@@ -82,26 +118,28 @@ private:
     VkImageView* swapchainImageViews;
     VkFramebuffer* framebuffers;
     uint32_t framesInFlight;
-    VkImage* offscreenImages;
-    VkDeviceMemory offscreenImagesMemory;
-    VkImageView* offscreenImageViews;
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet* descriptorSets;
     VkCommandBuffer* normalCommandBuffers;
     VkCommandBuffer* transientCommandBuffers;
     VkSemaphore* imageAvailableSemaphores;
     VkSemaphore* renderFinishedSemaphores;
     VkFence* fences;
-    uint32_t frameIndex;
+    VkImage* offscreenImages;
+    VkDeviceMemory offscreenImagesMemory;
+    VkImageView* offscreenImageViews;
+    uint32_t frameIndex = 0;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void allocateSwapchainResourcesMemory();
     void createSwapchainResources(VkDevice device, const RendererCreateInfo& createInfo);
+    void createFrameResources(VkDevice device);
     void allocateOffscreenResourcesMemory();
     void createOffscreenResources(Device& device, const RendererCreateInfo& createInfo);
-    void createFrameResources(VkDevice device);
 
     void freeSwapchainResourcesMemory();
     void destroySwapchainResources(VkDevice device);
+    void destroyFrameResources(VkDevice device);
     void freeOffscreenResourcesMemory();
     void destroyOffscreenResources(VkDevice device);
-    void destroyFrameResources(VkDevice device);
 };
