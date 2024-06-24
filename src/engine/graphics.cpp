@@ -523,7 +523,7 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
     uint32_t shaderCount = 0;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
-        if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
+        if (entries[i].stage != ShaderBindingTableStage::HIT) {
             ++shaderCount;
         }
         else {
@@ -554,10 +554,10 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
         shaderGroupCreateInfos[i].intersectionShader              = VK_SHADER_UNUSED_KHR;
         shaderGroupCreateInfos[i].pShaderGroupCaptureReplayHandle = nullptr;
 
-        if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
+        if (entries[i].stage != ShaderBindingTableStage::HIT) {
             shaderModules[j] = createShaderModule(device, entries[i].generalShader);
 
-            if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_RAYGEN) {
+            if (entries[i].stage == ShaderBindingTableStage::RAYGEN) {
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
             }
             else {
