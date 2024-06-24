@@ -45,17 +45,17 @@ TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 
 TARGET_LINK_LIBRARIES(engine imgui)
 
-# Game
-ADD_LIBRARY(game
-    src/game/game.cpp
-    src/game/gui.cpp
+# Application
+ADD_LIBRARY(application
+    src/application/application.cpp
+    src/application/gui.cpp
 )
 
-TARGET_INCLUDE_DIRECTORIES(game PUBLIC src/game)
+TARGET_INCLUDE_DIRECTORIES(application PUBLIC src/application)
 
-TARGET_LINK_LIBRARIES(game engine)
+TARGET_LINK_LIBRARIES(application engine)
 
 # Executable
 ADD_EXECUTABLE(vortex src/main.cpp)
 
-TARGET_LINK_LIBRARIES(vortex game)
+TARGET_LINK_LIBRARIES(vortex application)

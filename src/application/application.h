@@ -2,10 +2,10 @@
 
 #include <graphics.h>
 
-class Game {
+class Application {
 public:
-    Game();
-    ~Game();
+    Application();
+    ~Application();
 
     void run();
 

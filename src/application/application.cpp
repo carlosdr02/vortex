@@ -1,11 +1,11 @@
-#include "game.h"
+#include "application.h"
 
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 
 #include "gui.h"
 
-Game::Game() {
+Application::Application() {
     glfwInit();
 
     createWindow();
@@ -13,7 +13,7 @@ Game::Game() {
     createGuiResources();
 }
 
-Game::~Game() {
+Application::~Application() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
     shaderBindingTable.destroy(device.logical);
@@ -36,7 +36,7 @@ Game::~Game() {
     glfwTerminate();
 }
 
-void Game::run() {
+void Application::run() {
     VkExtent2D extent = surfaceCapabilities.currentExtent;
     renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
 
@@ -63,13 +63,13 @@ void Game::run() {
     }
 }
 
-void Game::createWindow() {
+void Application::createWindow() {
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(1600, 900, "Vortex", nullptr, nullptr);
 }
 
-void Game::createEngineResources() {
+void Application::createEngineResources() {
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
@@ -91,7 +91,7 @@ void Game::createEngineResources() {
     shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
 }
 
-void Game::createGuiResources() {
+void Application::createGuiResources() {
     ImGui::CreateContext();
 
     ImGui_ImplGlfw_InitForVulkan(window, true);
@@ -118,7 +118,7 @@ void Game::createGuiResources() {
     ImGui_ImplVulkan_Init(&initInfo);
 }
 
-RendererCreateInfo Game::getRendererCreateInfo() {
+RendererCreateInfo Application::getRendererCreateInfo() {
     surfaceCapabilities = device.getSurfaceCapabilities(surface, window);
 
     RendererCreateInfo rendererCreateInfo = {

@@ -1,6 +1,6 @@
-#include <game.h>
+#include <application.h>
 
 int main() {
-    Game game;
-    game.run();
+    Application app;
+    app.run();
 }
