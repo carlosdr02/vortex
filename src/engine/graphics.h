@@ -71,20 +71,6 @@ struct ShaderBindingTableEntry {
 
 VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
 
-class ShaderBindingTable {
-public:
-    VkStridedDeviceAddressRegionKHR raygen;
-    VkStridedDeviceAddressRegionKHR hit;
-    VkStridedDeviceAddressRegionKHR miss;
-
-    ShaderBindingTable() = default;
-    ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries);
-    void destroy(VkDevice device);
-
-private:
-    Buffer buffer;
-};
-
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
@@ -101,7 +87,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, ShaderBindingTable& sbt, VkExtent2D extent);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);

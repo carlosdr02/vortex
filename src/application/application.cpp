@@ -16,7 +16,6 @@ Application::Application() {
 Application::~Application() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
-    shaderBindingTable.destroy(device.logical);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -37,15 +36,14 @@ Application::~Application() {
 }
 
 void Application::run() {
-    VkExtent2D extent = surfaceCapabilities.currentExtent;
-    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
+    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         renderGui();
 
-        if (!renderer.render(device, renderPass, extent)) {
+        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -58,7 +56,7 @@ void Application::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
+            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
         }
     }
 }
@@ -88,7 +86,6 @@ void Application::createEngineResources() {
     };
 
     rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
-    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
 }
 
 void Application::createGuiResources() {

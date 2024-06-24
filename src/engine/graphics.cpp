@@ -627,51 +627,6 @@ static uint32_t alignNumber(uint32_t number, uint32_t alignment) {
     return (number + alignment - 1) & ~(alignment - 1);
 }
 
-ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries) {
-    uint32_t hitGroupCount = 0;
-    uint32_t missGroupCount = 0;
-
-    for (uint32_t i = 0; i < entryCount; ++i) {
-        if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_HIT) {
-            ++hitGroupCount;
-        }
-        else if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_MISS) {
-            ++missGroupCount;
-        }
-    }
-
-    const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& rtProperties = device.rtProperties;
-
-    const uint32_t handleSize = rtProperties.shaderGroupHandleSize;
-    raygen.stride = raygen.size = handleSize;
-
-    const uint32_t handleAlignment = rtProperties.shaderGroupHandleAlignment;
-    const uint32_t alignedHandleSize = alignNumber(handleSize, handleAlignment);
-    hit.stride = alignedHandleSize;
-    hit.size = hitGroupCount * hit.stride;
-
-    miss.stride = alignedHandleSize;
-    miss.size = missGroupCount * miss.stride;
-
-    const uint32_t baseAlignment = rtProperties.shaderGroupBaseAlignment;
-    const uint32_t hitBaseAlignment = alignNumber(raygen.size, baseAlignment);
-    const uint32_t missBaseAlignment = alignNumber(hit.size, baseAlignment);
-
-    const VkDeviceSize sbtSize = hitBaseAlignment + missBaseAlignment + miss.size;
-
-    buffer = Buffer(device, sbtSize,
-            VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    raygen.deviceAddress = buffer.getDeviceAddress(device.logical);
-    hit.deviceAddress = raygen.deviceAddress + hitBaseAlignment;
-    miss.deviceAddress = hit.deviceAddress + missBaseAlignment;
-}
-
-void ShaderBindingTable::destroy(VkDevice device) {
-    buffer.destroy(device);
-}
-
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
@@ -731,7 +686,7 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, ShaderBindingTable& sbt, VkExtent2D extent) {
+void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline) {
     vkResetCommandPool(device, normalCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -775,10 +730,6 @@ void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLa
 
         vkCmdBindDescriptorSets(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
         vkCmdBindPipeline(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rayTracingPipeline);
-
-        VkStridedDeviceAddressRegionKHR callable = {};
-
-        vkCmdTraceRays(normalCommandBuffers[i], &sbt.raygen, &sbt.miss, &sbt.hit, &callable, extent.width, extent.height, 1);
 
         imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;

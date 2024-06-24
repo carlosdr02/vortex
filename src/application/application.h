@@ -21,7 +21,6 @@ private:
     Renderer renderer;
     VkPipelineLayout pipelineLayout;
     VkPipeline rayTracingPipeline;
-    ShaderBindingTable shaderBindingTable;
 
     void createWindow();
     void createEngineResources();
