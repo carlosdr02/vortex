@@ -66,7 +66,7 @@ void Game::run() {
 void Game::createWindow() {
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window = glfwCreateWindow(1600, 900, "Achantcraft", nullptr, nullptr);
+    window = glfwCreateWindow(1600, 900, "Vortex", nullptr, nullptr);
 }
 
 void Game::createEngineResources() {

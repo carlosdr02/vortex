@@ -15,7 +15,7 @@ VkInstance createInstance() {
     VkApplicationInfo applicationInfo = {
         .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext              = nullptr,
-        .pApplicationName   = "Achantcraft",
+        .pApplicationName   = "Vortex",
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName        = "Vortex",
         .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
