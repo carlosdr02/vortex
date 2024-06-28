@@ -627,6 +627,51 @@ static uint32_t alignNumber(uint32_t number, uint32_t alignment) {
     return (number + alignment - 1) & ~(alignment - 1);
 }
 
+ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries) {
+    const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& rtProperties = device.rtProperties;
+
+    const uint32_t handleSize = rtProperties.shaderGroupHandleSize;
+    const uint32_t baseAlignment = rtProperties.shaderGroupBaseAlignment;
+    const uint32_t handleAlignment = rtProperties.shaderGroupHandleAlignment;
+
+    const uint32_t handleSizeAligned = alignNumber(handleSize, handleAlignment);
+
+    raygen.size = alignNumber(handleSizeAligned, baseAlignment);
+    raygen.stride = raygen.size;
+
+    uint32_t hitGroupCount = 0;
+    uint32_t missGroupCount = 0;
+
+    for (uint32_t i = 0; i < entryCount; ++i) {
+        if (entries[i].stage == ShaderBindingTableStage::HIT) {
+            ++hitGroupCount;
+        }
+        else if (entries[i].stage == ShaderBindingTableStage::MISS) {
+            ++missGroupCount;
+        }
+    }
+
+    hit.stride = handleSizeAligned;
+    hit.size = alignNumber(hitGroupCount * handleSizeAligned, baseAlignment);
+
+    miss.stride = handleSizeAligned;
+    miss.size = alignNumber(missGroupCount * handleSizeAligned, baseAlignment);
+
+    const VkDeviceSize bufferSize = raygen.size + hit.size + miss.size;
+
+    buffer = Buffer(device, bufferSize,
+                    VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    raygen.deviceAddress = buffer.getDeviceAddress(device.logical);
+    hit.deviceAddress = raygen.deviceAddress + raygen.size;
+    miss.deviceAddress = hit.deviceAddress + hit.size;
+}
+
+void ShaderBindingTable::destroy(VkDevice device) {
+    buffer.destroy(device);
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 

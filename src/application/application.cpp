@@ -16,6 +16,7 @@ Application::Application() {
 Application::~Application() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
+    shaderBindingTable.destroy(device.logical);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -86,6 +87,7 @@ void Application::createEngineResources() {
     };
 
     rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
+    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
 }
 
 void Application::createGuiResources() {
