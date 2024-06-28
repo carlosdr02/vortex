@@ -37,14 +37,15 @@ Application::~Application() {
 }
 
 void Application::run() {
-    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
+    VkExtent2D extent = surfaceCapabilities.currentExtent;
+    renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         renderGui();
 
-        if (!renderer.render(device, renderPass, surfaceCapabilities.currentExtent)) {
+        if (!renderer.render(device, renderPass, extent)) {
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -57,7 +58,7 @@ void Application::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline);
+            renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
         }
     }
 }
