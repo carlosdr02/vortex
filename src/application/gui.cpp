@@ -15,6 +15,14 @@ static void renderMainMenuBar() {
             EndMenu();
         }
 
+        if (BeginMenu("View")) {
+            EndMenu();
+        }
+
+        if (BeginMenu("Tools")) {
+            EndMenu();
+        }
+
         if (BeginMenu("Window")) {
             EndMenu();
         }
