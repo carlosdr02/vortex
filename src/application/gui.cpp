@@ -11,6 +11,18 @@ static void renderMainMenuBar() {
             EndMenu();
         }
 
+        if (BeginMenu("Edit")) {
+            EndMenu();
+        }
+
+        if (BeginMenu("Window")) {
+            EndMenu();
+        }
+
+        if (BeginMenu("Help")) {
+            EndMenu();
+        }
+
         EndMainMenuBar();
     }
 }
