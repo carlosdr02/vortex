@@ -179,7 +179,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .synchronization2 = VK_TRUE
     };
 
-    float queuePriority = 1.0f;
+    const float queuePriority = 1.0f;
 
     VkDeviceQueueCreateInfo deviceQueueCreateInfos[2];
 
@@ -508,7 +508,7 @@ VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, 
 static VkShaderModule createShaderModule(VkDevice device, const char* fileName) {
     std::ifstream file(fileName, std::ios::ate | std::ios::binary);
 
-    size_t codeSize = file.tellg();
+    const size_t codeSize = file.tellg();
     char* code = new char[codeSize];
 
     file.seekg(0);
@@ -753,7 +753,8 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, VkPipeline rayTracingPipeline, const ShaderBindingTable& sbt, VkExtent2D extent) {
+void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout,
+        VkPipeline rayTracingPipeline, const ShaderBindingTable& sbt, VkExtent2D extent) {
     vkResetCommandPool(device, normalCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -820,7 +821,8 @@ bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent
 
     uint32_t imageIndex;
 
-    if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) == VK_ERROR_OUT_OF_DATE_KHR) {
+    if (vkAcquireNextImageKHR(device.logical, swapchain, UINT64_MAX, imageAvailableSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex) ==
+            VK_ERROR_OUT_OF_DATE_KHR) {
         return false;
     }
 
