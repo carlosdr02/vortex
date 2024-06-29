@@ -116,6 +116,9 @@ void Application::createGuiResources() {
     };
 
     ImGui_ImplVulkan_Init(&initInfo);
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontFromFileTTF("../res/fonts/Ubuntu-Regular.ttf", 13.0f);
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {
