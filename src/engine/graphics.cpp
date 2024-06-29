@@ -125,15 +125,30 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
     VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyPropertyCount];
     vkGetPhysicalDeviceQueueFamilyProperties(physical, &queueFamilyPropertyCount, queueFamilyProperties);
 
+    VkQueueFlags renderQueueFlags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
+
+    bool foundRenderQueue = false;
+    bool foundTransferQueue = false;
+
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        VkQueueFlags queueFlags = queueFamilyProperties[i].queueFlags;
+
+        if ((queueFlags & renderQueueFlags) == renderQueueFlags) {
             VkBool32 surfaceSupported;
             vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
             if (surfaceSupported) {
                 renderQueue.familyIndex = i;
-                break;
+                foundRenderQueue = true;
             }
+        }
+        else if (!(queueFlags & renderQueueFlags) && (queueFlags & VK_QUEUE_TRANSFER_BIT)) {
+            transferQueue.familyIndex = i;
+            foundTransferQueue = true;
+        }
+
+        if (foundRenderQueue && foundTransferQueue) {
+            break;
         }
     }
 
@@ -166,14 +181,21 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     float queuePriority = 1.0f;
 
-    VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
-        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .pNext            = nullptr,
-        .flags            = 0,
-        .queueFamilyIndex = renderQueue.familyIndex,
-        .queueCount       = 1,
-        .pQueuePriorities = &queuePriority
-    };
+    VkDeviceQueueCreateInfo deviceQueueCreateInfos[2];
+
+    deviceQueueCreateInfos[0].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueCreateInfos[0].pNext            = nullptr;
+    deviceQueueCreateInfos[0].flags            = 0;
+    deviceQueueCreateInfos[0].queueFamilyIndex = renderQueue.familyIndex;
+    deviceQueueCreateInfos[0].queueCount       = 1;
+    deviceQueueCreateInfos[0].pQueuePriorities = &queuePriority;
+
+    deviceQueueCreateInfos[1].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    deviceQueueCreateInfos[1].pNext            = nullptr;
+    deviceQueueCreateInfos[1].flags            = 0;
+    deviceQueueCreateInfos[1].queueFamilyIndex = transferQueue.familyIndex;
+    deviceQueueCreateInfos[1].queueCount       = 1;
+    deviceQueueCreateInfos[1].pQueuePriorities = &queuePriority;
 
     const char* deviceExtensions[] = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -186,8 +208,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = &vulkan13Features,
         .flags                   = 0,
-        .queueCreateInfoCount    = 1,
-        .pQueueCreateInfos       = &deviceQueueCreateInfo,
+        .queueCreateInfoCount    = ARRAY_SIZE(deviceQueueCreateInfos),
+        .pQueueCreateInfos       = deviceQueueCreateInfos,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
         .enabledExtensionCount   = ARRAY_SIZE(deviceExtensions),
