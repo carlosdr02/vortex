@@ -219,8 +219,9 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
 
-    // Get the device queue.
+    // Get the device queues.
     vkGetDeviceQueue(logical, renderQueue.familyIndex, 0, &renderQueue);
+    vkGetDeviceQueue(logical, transferQueue.familyIndex, 0, &transferQueue);
 }
 
 void Device::destroy() {
