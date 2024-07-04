@@ -11,6 +11,7 @@ Application::Application() {
     createWindow();
     createEngineResources();
     createGuiResources();
+    forLackOfABetterName();
 }
 
 Application::~Application() {
@@ -119,6 +120,162 @@ void Application::createGuiResources() {
 
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF("../res/fonts/Ubuntu-Regular.ttf", 13.0f);
+}
+
+void Application::forLackOfABetterName() {
+    const VkDeviceSize sbtSize = shaderBindingTable.size;
+    char* shaderGroupHandles = new char[sbtSize];
+    vkGetRayTracingShaderGroupHandles(device.logical, rayTracingPipeline, 0, 1, sbtSize, shaderGroupHandles);
+
+    Buffer stagingBuffer(device, sbtSize,
+                         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    {
+        void* data;
+        vkMapMemory(device.logical, stagingBuffer.memory, 0, sbtSize, 0, &data);
+        memcpy(data, shaderGroupHandles, sbtSize);
+        vkUnmapMemory(device.logical, stagingBuffer.memory);
+    }
+
+    delete[] shaderGroupHandles;
+
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = device.transferQueue.familyIndex
+    };
+
+    VkCommandPool transferCommandPool;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &transferCommandPool);
+
+    commandPoolCreateInfo.queueFamilyIndex = device.renderQueue.familyIndex;
+
+    VkCommandPool renderCommandPool;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &renderCommandPool);
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = transferCommandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    VkCommandBuffer transferCommandBuffer;
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &transferCommandBuffer);
+
+    commandBufferAllocateInfo.commandPool = renderCommandPool;
+
+    VkCommandBuffer renderCommandBuffer;
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &renderCommandBuffer);
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(transferCommandBuffer, &commandBufferBeginInfo);
+
+    VkBufferCopy region = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size      = sbtSize
+    };
+
+    vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, shaderBindingTable.buffer, 1, &region);
+
+    VkBufferMemoryBarrier2 bufferMemoryBarrier = {
+        .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .pNext               = nullptr,
+        .srcStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
+        .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask        = 0,
+        .dstAccessMask       = 0,
+        .srcQueueFamilyIndex = device.transferQueue.familyIndex,
+        .dstQueueFamilyIndex = device.renderQueue.familyIndex,
+        .buffer              = shaderBindingTable.buffer,
+        .offset              = 0,
+        .size                = sbtSize
+    };
+
+    VkDependencyInfo dependencyInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .pNext                    = nullptr,
+        .dependencyFlags          = 0,
+        .memoryBarrierCount       = 0,
+        .pMemoryBarriers          = nullptr,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers    = &bufferMemoryBarrier,
+        .imageMemoryBarrierCount  = 0,
+        .pImageMemoryBarriers     = nullptr
+    };
+
+    vkCmdPipelineBarrier2(transferCommandBuffer, &dependencyInfo);
+
+    vkEndCommandBuffer(transferCommandBuffer);
+
+    vkBeginCommandBuffer(renderCommandBuffer, &commandBufferBeginInfo);
+
+    bufferMemoryBarrier.srcStageMask  = 0;
+    bufferMemoryBarrier.srcAccessMask = 0;
+    bufferMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    bufferMemoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier2(renderCommandBuffer, &dependencyInfo);
+
+    vkEndCommandBuffer(renderCommandBuffer);
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0
+    };
+
+    VkSemaphore semaphore;
+    vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &semaphore);
+
+    VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = transferCommandBuffer,
+        .deviceMask    = 0
+    };
+
+    VkSemaphoreSubmitInfo semaphoreSubmitInfo = {
+        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext       = nullptr,
+        .semaphore   = semaphore,
+        .value       = 0,
+        .stageMask   = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .deviceIndex = 0
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext                    = nullptr,
+        .flags                    = 0,
+        .waitSemaphoreInfoCount   = 0,
+        .pWaitSemaphoreInfos      = nullptr,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &commandBufferSubmitInfo,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos    = &semaphoreSubmitInfo
+    };
+
+    vkQueueSubmit2(device.transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+    commandBufferSubmitInfo.commandBuffer = renderCommandBuffer;
+
+    submitInfo.waitSemaphoreInfoCount   = 1;
+    submitInfo.pWaitSemaphoreInfos      = &semaphoreSubmitInfo;
+    submitInfo.signalSemaphoreInfoCount = 0;
+    submitInfo.pSignalSemaphoreInfos    = nullptr;
+
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {

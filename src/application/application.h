@@ -26,6 +26,7 @@ private:
     void createWindow();
     void createEngineResources();
     void createGuiResources();
+    void forLackOfABetterName();
 
     RendererCreateInfo getRendererCreateInfo();
 };
