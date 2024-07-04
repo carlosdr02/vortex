@@ -1,5 +1,7 @@
 #include "application.h"
 
+#include <thread>
+
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 
@@ -285,6 +287,17 @@ void Application::forLackOfABetterName() {
     submitInfo.pSignalSemaphoreInfos    = nullptr;
 
     vkQueueSubmit2(device.renderQueue, 1, &submitInfo, fence);
+
+    std::thread([=, this]() mutable {
+        vkWaitForFences(device.logical, 1, &fence, VK_TRUE, UINT64_MAX);
+
+        vkDestroyFence(device.logical, fence, nullptr);
+        vkDestroySemaphore(device.logical, semaphore, nullptr);
+        vkDestroyCommandPool(device.logical, renderCommandPool, nullptr);
+        vkDestroyCommandPool(device.logical, transferCommandPool, nullptr);
+
+        stagingBuffer.destroy(device.logical);
+    }).detach();
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {
