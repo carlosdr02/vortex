@@ -21,7 +21,7 @@ VkInstance createInstance() {
         .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
         .apiVersion         = VK_API_VERSION_1_3
     };
-
+    auto layer = "VK_LAYER_KHRONOS_validation";
     uint32_t extensionCount;
     const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
 
@@ -30,8 +30,8 @@ VkInstance createInstance() {
         .pNext                   = nullptr,
         .flags                   = 0,
         .pApplicationInfo        = &applicationInfo,
-        .enabledLayerCount       = 0,
-        .ppEnabledLayerNames     = nullptr,
+        .enabledLayerCount       = 1,
+        .ppEnabledLayerNames     = &layer,
         .enabledExtensionCount   = extensionCount,
         .ppEnabledExtensionNames = extensions
     };

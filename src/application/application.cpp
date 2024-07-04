@@ -238,6 +238,15 @@ void Application::forLackOfABetterName() {
     VkSemaphore semaphore;
     vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &semaphore);
 
+    VkFenceCreateInfo fenceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0
+    };
+
+    VkFence fence;
+    vkCreateFence(device.logical, &fenceCreateInfo, nullptr, &fence);
+
     VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
         .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext         = nullptr,
@@ -275,7 +284,7 @@ void Application::forLackOfABetterName() {
     submitInfo.signalSemaphoreInfoCount = 0;
     submitInfo.pSignalSemaphoreInfos    = nullptr;
 
-    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, fence);
 }
 
 RendererCreateInfo Application::getRendererCreateInfo() {
