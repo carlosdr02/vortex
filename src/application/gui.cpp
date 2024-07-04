@@ -5,6 +5,8 @@
 
 using namespace ImGui;
 
+static bool preferencesWindow = false;
+
 static void renderMainMenuBar() {
     if (BeginMainMenuBar()) {
         if (BeginMenu("File")) {
@@ -12,6 +14,10 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Edit")) {
+            if (MenuItem("Preferences")) {
+                preferencesWindow = true;
+            }
+
             EndMenu();
         }
 
@@ -35,12 +41,31 @@ static void renderMainMenuBar() {
     }
 }
 
+static void renderPreferencesWindow() {
+    if (Begin("Preferences", &preferencesWindow)) {
+        if (BeginTabBar("preferences_window_tab_bar")) {
+            if (BeginTabItem("General")) {
+                EndTabItem();
+            }
+
+            if (BeginTabItem("Graphics")) {
+                EndTabItem();
+            }
+
+            EndTabBar();
+        }
+
+        End();
+    }
+}
+
 void renderGui() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     NewFrame();
 
     renderMainMenuBar();
+    if (preferencesWindow) renderPreferencesWindow();
 
     Render();
 }
