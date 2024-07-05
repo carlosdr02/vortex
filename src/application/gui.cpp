@@ -14,9 +14,7 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Edit")) {
-            if (MenuItem("Preferences")) {
-                preferencesWindow = true;
-            }
+            if (MenuItem("Preferences")) preferencesWindow = true;
 
             EndMenu();
         }
@@ -42,21 +40,21 @@ static void renderMainMenuBar() {
 }
 
 static void renderPreferencesWindow() {
-    if (Begin("Preferences", &preferencesWindow)) {
-        if (BeginTabBar("preferences_window_tab_bar")) {
-            if (BeginTabItem("General")) {
-                EndTabItem();
-            }
+    Begin("Preferences", &preferencesWindow);
 
-            if (BeginTabItem("Graphics")) {
-                EndTabItem();
-            }
-
-            EndTabBar();
+    if (BeginTabBar("preferences_window_tab_bar")) {
+        if (BeginTabItem("General")) {
+            EndTabItem();
         }
 
-        End();
+        if (BeginTabItem("Graphics")) {
+            EndTabItem();
+        }
+
+        EndTabBar();
     }
+
+    End();
 }
 
 void renderGui() {
