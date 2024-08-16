@@ -61,6 +61,7 @@ void Application::run() {
 
             RendererCreateInfo rendererCreateInfo = getRendererCreateInfo();
             renderer.resize(device, rendererCreateInfo);
+            extent = surfaceCapabilities.currentExtent;
             renderer.recordCommandBuffers(device.logical, pipelineLayout, rayTracingPipeline, shaderBindingTable, extent);
         }
     }
