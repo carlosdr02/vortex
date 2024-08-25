@@ -58,10 +58,10 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, const VkDescriptorSetLayout* setLayouts);
 
-enum class ShaderBindingTableStage {
-    RAYGEN,
-    HIT,
-    MISS
+enum ShaderBindingTableStage {
+    SHADER_BINDING_TABLE_STAGE_RAYGEN,
+    SHADER_BINDING_TABLE_STAGE_HIT,
+    SHADER_BINDING_TABLE_STAGE_MISS
 };
 
 struct ShaderBindingTableEntry {

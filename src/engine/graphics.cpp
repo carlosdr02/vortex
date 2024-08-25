@@ -547,7 +547,7 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
     uint32_t shaderCount = 0;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
-        if (entries[i].stage != ShaderBindingTableStage::HIT) {
+        if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
             ++shaderCount;
         }
         else {
@@ -578,10 +578,10 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
         shaderGroupCreateInfos[i].intersectionShader              = VK_SHADER_UNUSED_KHR;
         shaderGroupCreateInfos[i].pShaderGroupCaptureReplayHandle = nullptr;
 
-        if (entries[i].stage != ShaderBindingTableStage::HIT) {
+        if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
             shaderModules[j] = createShaderModule(device, entries[i].generalShader);
 
-            if (entries[i].stage == ShaderBindingTableStage::RAYGEN) {
+            if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_RAYGEN) {
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
             }
             else {
@@ -667,10 +667,10 @@ ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, cons
     uint32_t missGroupCount = 0;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
-        if (entries[i].stage == ShaderBindingTableStage::HIT) {
+        if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_HIT) {
             ++hitGroupCount;
         }
-        else if (entries[i].stage == ShaderBindingTableStage::MISS) {
+        else if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_MISS) {
             ++missGroupCount;
         }
     }
