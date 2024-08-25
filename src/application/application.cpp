@@ -127,8 +127,6 @@ void Application::createGuiResources() {
 
 void Application::forLackOfABetterName() {
     const VkDeviceSize sbtSize = shaderBindingTable.size;
-    char* shaderGroupHandles = new char[sbtSize];
-    vkGetRayTracingShaderGroupHandles(device.logical, rayTracingPipeline, 0, 1, sbtSize, shaderGroupHandles);
 
     Buffer stagingBuffer(device, sbtSize,
                          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -137,11 +135,9 @@ void Application::forLackOfABetterName() {
     {
         void* data;
         vkMapMemory(device.logical, stagingBuffer.memory, 0, sbtSize, 0, &data);
-        memcpy(data, shaderGroupHandles, sbtSize);
+        vkGetRayTracingShaderGroupHandles(device.logical, rayTracingPipeline, 0, 1, sbtSize, data);
         vkUnmapMemory(device.logical, stagingBuffer.memory);
     }
-
-    delete[] shaderGroupHandles;
 
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
