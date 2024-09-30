@@ -14,7 +14,7 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Edit")) {
-            if (MenuItem("Settings")) settingsWindow = true;
+            MenuItem("Settings", NULL, &settingsWindow);
 
             EndMenu();
         }
