@@ -143,32 +143,22 @@ void Application::forLackOfABetterName() {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
         .pNext            = nullptr,
         .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-        .queueFamilyIndex = device.transferQueue.familyIndex
+        .queueFamilyIndex = device.renderQueue.familyIndex
     };
 
-    VkCommandPool transferCommandPool;
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &transferCommandPool);
-
-    commandPoolCreateInfo.queueFamilyIndex = device.renderQueue.familyIndex;
-
-    VkCommandPool renderCommandPool;
-    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &renderCommandPool);
+    VkCommandPool commandPool;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
         .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext              = nullptr,
-        .commandPool        = transferCommandPool,
+        .commandPool        = commandPool,
         .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
         .commandBufferCount = 1
     };
 
-    VkCommandBuffer transferCommandBuffer;
-    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &transferCommandBuffer);
-
-    commandBufferAllocateInfo.commandPool = renderCommandPool;
-
-    VkCommandBuffer renderCommandBuffer;
-    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &renderCommandBuffer);
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &commandBuffer);
 
     VkCommandBufferBeginInfo commandBufferBeginInfo = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -177,7 +167,7 @@ void Application::forLackOfABetterName() {
         .pInheritanceInfo = nullptr
     };
 
-    vkBeginCommandBuffer(transferCommandBuffer, &commandBufferBeginInfo);
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
 
     VkBufferCopy region = {
         .srcOffset = 0,
@@ -185,17 +175,17 @@ void Application::forLackOfABetterName() {
         .size      = sbtSize
     };
 
-    vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, shaderBindingTable.buffer, 1, &region);
+    vkCmdCopyBuffer(commandBuffer, stagingBuffer, shaderBindingTable.buffer, 1, &region);
 
     VkBufferMemoryBarrier2 bufferMemoryBarrier = {
         .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
         .pNext               = nullptr,
         .srcStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
         .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        .dstStageMask        = 0,
-        .dstAccessMask       = 0,
-        .srcQueueFamilyIndex = device.transferQueue.familyIndex,
-        .dstQueueFamilyIndex = device.renderQueue.familyIndex,
+        .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+        .dstAccessMask       = VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .buffer              = shaderBindingTable.buffer,
         .offset              = 0,
         .size                = sbtSize
@@ -213,29 +203,9 @@ void Application::forLackOfABetterName() {
         .pImageMemoryBarriers     = nullptr
     };
 
-    vkCmdPipelineBarrier2(transferCommandBuffer, &dependencyInfo);
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 
-    vkEndCommandBuffer(transferCommandBuffer);
-
-    vkBeginCommandBuffer(renderCommandBuffer, &commandBufferBeginInfo);
-
-    bufferMemoryBarrier.srcStageMask  = 0;
-    bufferMemoryBarrier.srcAccessMask = 0;
-    bufferMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
-    bufferMemoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier2(renderCommandBuffer, &dependencyInfo);
-
-    vkEndCommandBuffer(renderCommandBuffer);
-
-    VkSemaphoreCreateInfo semaphoreCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0
-    };
-
-    VkSemaphore semaphore;
-    vkCreateSemaphore(device.logical, &semaphoreCreateInfo, nullptr, &semaphore);
+    vkEndCommandBuffer(commandBuffer);
 
     VkFenceCreateInfo fenceCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -249,17 +219,8 @@ void Application::forLackOfABetterName() {
     VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
         .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext         = nullptr,
-        .commandBuffer = transferCommandBuffer,
+        .commandBuffer = commandBuffer,
         .deviceMask    = 0
-    };
-
-    VkSemaphoreSubmitInfo semaphoreSubmitInfo = {
-        .sType       = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-        .pNext       = nullptr,
-        .semaphore   = semaphore,
-        .value       = 0,
-        .stageMask   = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        .deviceIndex = 0
     };
 
     VkSubmitInfo2 submitInfo = {
@@ -270,28 +231,17 @@ void Application::forLackOfABetterName() {
         .pWaitSemaphoreInfos      = nullptr,
         .commandBufferInfoCount   = 1,
         .pCommandBufferInfos      = &commandBufferSubmitInfo,
-        .signalSemaphoreInfoCount = 1,
-        .pSignalSemaphoreInfos    = &semaphoreSubmitInfo
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos    = nullptr
     };
 
-    vkQueueSubmit2(device.transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
-    commandBufferSubmitInfo.commandBuffer = renderCommandBuffer;
-
-    submitInfo.waitSemaphoreInfoCount   = 1;
-    submitInfo.pWaitSemaphoreInfos      = &semaphoreSubmitInfo;
-    submitInfo.signalSemaphoreInfoCount = 0;
-    submitInfo.pSignalSemaphoreInfos    = nullptr;
-
-    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, fence);
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
     std::thread([=, this]() mutable {
         vkWaitForFences(device.logical, 1, &fence, VK_TRUE, UINT64_MAX);
 
         vkDestroyFence(device.logical, fence, nullptr);
-        vkDestroySemaphore(device.logical, semaphore, nullptr);
-        vkDestroyCommandPool(device.logical, renderCommandPool, nullptr);
-        vkDestroyCommandPool(device.logical, transferCommandPool, nullptr);
+        vkDestroyCommandPool(device.logical, commandPool, nullptr);
 
         stagingBuffer.destroy(device.logical);
     }).detach();
