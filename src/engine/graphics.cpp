@@ -1041,7 +1041,7 @@ void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& create
         .pQueueFamilyIndices   = nullptr,
         .preTransform          = surfaceCapabilities->currentTransform,
         .compositeAlpha        = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode           = VK_PRESENT_MODE_MAILBOX_KHR, // TODO
+        .presentMode           = VK_PRESENT_MODE_FIFO_KHR, // TODO
         .clipped               = VK_TRUE,
         .oldSwapchain          = oldSwapchain
     };
