@@ -237,7 +237,7 @@ void Application::forLackOfABetterName() {
         .pSignalSemaphoreInfos    = nullptr
     };
 
-    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueSubmit2(device.renderQueue, 1, &submitInfo, fence);
 
     std::thread([=, this]() mutable {
         vkWaitForFences(device.logical, 1, &fence, VK_TRUE, UINT64_MAX);
