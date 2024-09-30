@@ -166,21 +166,14 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     const float queuePriority = 1.0f;
 
-    VkDeviceQueueCreateInfo deviceQueueCreateInfos[2];
-
-    deviceQueueCreateInfos[0].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfos[0].pNext            = nullptr;
-    deviceQueueCreateInfos[0].flags            = 0;
-    deviceQueueCreateInfos[0].queueFamilyIndex = renderQueue.familyIndex;
-    deviceQueueCreateInfos[0].queueCount       = 1;
-    deviceQueueCreateInfos[0].pQueuePriorities = &queuePriority;
-
-    deviceQueueCreateInfos[1].sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfos[1].pNext            = nullptr;
-    deviceQueueCreateInfos[1].flags            = 0;
-    deviceQueueCreateInfos[1].queueFamilyIndex = transferQueue.familyIndex;
-    deviceQueueCreateInfos[1].queueCount       = 1;
-    deviceQueueCreateInfos[1].pQueuePriorities = &queuePriority;
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = 0,
+        .queueFamilyIndex = renderQueue.familyIndex,
+        .queueCount       = 1,
+        .pQueuePriorities = &queuePriority
+    };
 
     const char* deviceExtensions[] = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -193,8 +186,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = &vulkan13Features,
         .flags                   = 0,
-        .queueCreateInfoCount    = ARRAY_SIZE(deviceQueueCreateInfos),
-        .pQueueCreateInfos       = deviceQueueCreateInfos,
+        .queueCreateInfoCount    = 1,
+        .pQueueCreateInfos       = &deviceQueueCreateInfo,
         .enabledLayerCount       = 0,
         .ppEnabledLayerNames     = nullptr,
         .enabledExtensionCount   = ARRAY_SIZE(deviceExtensions),
@@ -206,7 +199,6 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     // Get the device queues.
     vkGetDeviceQueue(logical, renderQueue.familyIndex, 0, &renderQueue);
-    vkGetDeviceQueue(logical, transferQueue.familyIndex, 0, &transferQueue);
 }
 
 void Device::destroy() {
