@@ -418,8 +418,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear) {
 
         memoryBarriers[0].srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
         memoryBarriers[0].srcAccessMask = VK_ACCESS_2_NONE;
-    }
-    else {
+    } else {
         attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
         attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
@@ -526,8 +525,7 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
     for (uint32_t i = 0; i < entryCount; ++i) {
         if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
             ++shaderCount;
-        }
-        else {
+        } else {
             if (entries[i].closestHitShader != nullptr) {
                 ++shaderCount;
             }
@@ -560,15 +558,13 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
 
             if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_RAYGEN) {
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
-            }
-            else {
+            } else {
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_MISS_BIT_KHR, shaderModules[j]);
             }
 
             shaderGroupCreateInfos[i].type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
             shaderGroupCreateInfos[i].generalShader = j++;
-        }
-        else {
+        } else {
             if (entries[i].closestHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].closestHitShader);
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderModules[j]);
@@ -586,8 +582,7 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderModules[j]);
                 shaderGroupCreateInfos[i].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
                 shaderGroupCreateInfos[i].intersectionShader = j++;
-            }
-            else {
+            } else {
                 shaderGroupCreateInfos[i].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
             }
         }
@@ -646,8 +641,7 @@ ShaderBindingTable::ShaderBindingTable(Device& device, uint32_t entryCount, cons
     for (uint32_t i = 0; i < entryCount; ++i) {
         if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_HIT) {
             ++hitGroupCount;
-        }
-        else if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_MISS) {
+        } else if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_MISS) {
             ++missGroupCount;
         }
     }
