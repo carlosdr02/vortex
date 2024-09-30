@@ -127,28 +127,15 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     VkQueueFlags renderQueueFlags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
 
-    bool foundRenderQueue = false;
-    bool foundTransferQueue = false;
-
     for (uint32_t i = 0; i < queueFamilyPropertyCount; ++i) {
-        VkQueueFlags queueFlags = queueFamilyProperties[i].queueFlags;
-
-        if ((queueFlags & renderQueueFlags) == renderQueueFlags) {
+        if ((queueFamilyProperties[i].queueFlags & renderQueueFlags) == renderQueueFlags) {
             VkBool32 surfaceSupported;
             vkGetPhysicalDeviceSurfaceSupportKHR(physical, i, surface, &surfaceSupported);
 
             if (surfaceSupported) {
                 renderQueue.familyIndex = i;
-                foundRenderQueue = true;
+                break;
             }
-        }
-        else if (!(queueFlags & renderQueueFlags) && (queueFlags & VK_QUEUE_TRANSFER_BIT)) {
-            transferQueue.familyIndex = i;
-            foundTransferQueue = true;
-        }
-
-        if (foundRenderQueue && foundTransferQueue) {
-            break;
         }
     }
 

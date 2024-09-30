@@ -23,7 +23,6 @@ public:
     VkPhysicalDevice physical;
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties;
     Queue renderQueue;
-    Queue transferQueue;
     VkDevice logical;
 
     Device() = default;
