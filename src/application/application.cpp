@@ -257,7 +257,7 @@ RendererCreateInfo Application::getRendererCreateInfo() {
         .surfaceCapabilities = &surfaceCapabilities,
         .surfaceFormat       = surfaceFormat,
         .renderPass          = renderPass,
-        .framesInFlight      = 1
+        .framesInFlight      = 2
     };
 
     return rendererCreateInfo;
