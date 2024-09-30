@@ -6,6 +6,7 @@
 using namespace ImGui;
 
 static bool settingsWindow = false;
+static bool contentBrowserWindow = true;
 
 static void renderMainMenuBar() {
     if (BeginMainMenuBar()) {
@@ -28,6 +29,8 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Window")) {
+            MenuItem("Content browser", NULL, &contentBrowserWindow);
+
             EndMenu();
         }
 
@@ -57,6 +60,11 @@ static void renderSettingsWindow() {
     End();
 }
 
+static void renderContentBrowserWindow() {
+    Begin("Content browser", &contentBrowserWindow);
+    End();
+}
+
 void renderGui() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -64,6 +72,7 @@ void renderGui() {
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
+    if (contentBrowserWindow) renderContentBrowserWindow();
 
     Render();
 }
