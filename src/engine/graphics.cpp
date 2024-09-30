@@ -6,8 +6,6 @@
 
 #include <imgui_impl_vulkan.h>
 
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-
 static PFN_vkCreateRayTracingPipelinesKHR vkCreateRayTracingPipelines;
 static PFN_vkCmdTraceRaysKHR vkCmdTraceRays;
 

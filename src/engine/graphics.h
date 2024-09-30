@@ -3,6 +3,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+
 inline PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandles;
 
 VkInstance createInstance();

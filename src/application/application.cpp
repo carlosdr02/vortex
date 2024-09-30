@@ -91,8 +91,10 @@ void Application::createEngineResources() {
         { .stage = SHADER_BINDING_TABLE_STAGE_RAYGEN, .generalShader = "raygen.spv" }
     };
 
-    rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
-    shaderBindingTable = ShaderBindingTable(device, 1, sbtEntries);
+    const uint32_t sbtEntryCount = ARRAY_SIZE(sbtEntries);
+
+    rayTracingPipeline = createRayTracingPipeline(device.logical, sbtEntryCount, sbtEntries, pipelineLayout);
+    shaderBindingTable = ShaderBindingTable(device, sbtEntryCount, sbtEntries);
 }
 
 void Application::createGuiResources() {
