@@ -1,6 +1,7 @@
 #pragma once
 
 #include <graphics.h>
+#include "project.h"
 
 class Application {
 public:
@@ -11,6 +12,7 @@ public:
 
 private:
     GLFWwindow* window;
+    Project project;
     VkInstance instance;
     VkSurfaceKHR surface;
     Device device;
