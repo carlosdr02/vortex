@@ -1,3 +1,5 @@
 #pragma once
 
-void renderGui();
+#include <GLFW/glfw3.h>
+
+void renderGui(GLFWwindow* window);

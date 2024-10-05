@@ -3,6 +3,8 @@
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 
+#include "file_dialog.h"
+
 using namespace ImGui;
 
 static bool settingsWindow = false;
@@ -60,12 +62,12 @@ static void renderSettingsWindow() {
     End();
 }
 
-static void renderContentBrowserWindow() {
+static void renderContentBrowserWindow(GLFWwindow* window) {
     Begin("Content browser", &contentBrowserWindow);
 
     if (BeginPopupContextWindow()) {
         if (MenuItem("Import...")) {
-
+            std::string filePath = openFileDialog(window);
         }
 
         EndPopup();
@@ -74,14 +76,14 @@ static void renderContentBrowserWindow() {
     End();
 }
 
-void renderGui() {
+void renderGui(GLFWwindow* window) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     NewFrame();
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
-    if (contentBrowserWindow) renderContentBrowserWindow();
+    if (contentBrowserWindow) renderContentBrowserWindow(window);
 
     Render();
 }
