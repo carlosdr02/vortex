@@ -62,6 +62,15 @@ static void renderSettingsWindow() {
 
 static void renderContentBrowserWindow() {
     Begin("Content browser", &contentBrowserWindow);
+
+    if (BeginPopupContextWindow()) {
+        if (MenuItem("Import...")) {
+
+        }
+
+        EndPopup();
+    }
+
     End();
 }
 
