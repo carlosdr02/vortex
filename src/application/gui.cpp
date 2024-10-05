@@ -74,6 +74,10 @@ static void renderContentBrowserWindow(GLFWwindow* window, Project& project) {
         EndPopup();
     }
 
+    for (const auto& file : project.files) {
+        Selectable(file.c_str());
+    }
+
     End();
 }
 
