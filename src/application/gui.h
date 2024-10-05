@@ -2,4 +2,6 @@
 
 #include <GLFW/glfw3.h>
 
-void renderGui(GLFWwindow* window);
+#include "project.h"
+
+void renderGui(GLFWwindow* window, Project& project);

@@ -62,12 +62,13 @@ static void renderSettingsWindow() {
     End();
 }
 
-static void renderContentBrowserWindow(GLFWwindow* window) {
+static void renderContentBrowserWindow(GLFWwindow* window, Project& project) {
     Begin("Content browser", &contentBrowserWindow);
 
     if (BeginPopupContextWindow()) {
         if (MenuItem("Import...")) {
-            std::string filePath = openFileDialog(window);
+            std::string file = openFileDialog(window);
+            project.import(file);
         }
 
         EndPopup();
@@ -76,14 +77,14 @@ static void renderContentBrowserWindow(GLFWwindow* window) {
     End();
 }
 
-void renderGui(GLFWwindow* window) {
+void renderGui(GLFWwindow* window, Project& project) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     NewFrame();
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
-    if (contentBrowserWindow) renderContentBrowserWindow(window);
+    if (contentBrowserWindow) renderContentBrowserWindow(window, project);
 
     Render();
 }

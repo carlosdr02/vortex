@@ -46,7 +46,7 @@ void Application::run() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        renderGui(window);
+        renderGui(window, project);
 
         if (!renderer.render(device, renderPass, extent)) {
             int width, height;
