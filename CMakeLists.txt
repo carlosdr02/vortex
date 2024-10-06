@@ -36,6 +36,12 @@ TARGET_LINK_LIBRARIES(imgui ${Vulkan_LIBRARIES})
 
 TARGET_LINK_LIBRARIES(imgui glfw)
 
+# TinyGLTF
+SET(TINYGLTF_HEADER_ONLY ON CACHE INTERNAL "" FORCE)
+SET(TINYGLTF_INSTALL OFF CACHE INTERNAL "" FORCE)
+
+ADD_SUBDIRECTORY(dependencies/tinygltf)
+
 # Engine
 ADD_LIBRARY(engine
     src/engine/graphics.cpp
@@ -56,6 +62,7 @@ ADD_LIBRARY(application
 TARGET_INCLUDE_DIRECTORIES(application PUBLIC src/application)
 
 TARGET_LINK_LIBRARIES(application engine)
+TARGET_LINK_LIBRARIES(application tinygltf)
 
 # Executable
 ADD_EXECUTABLE(vortex src/main.cpp)
