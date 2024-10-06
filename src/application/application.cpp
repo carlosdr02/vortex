@@ -74,6 +74,7 @@ void Application::createWindow() {
 }
 
 void Application::createEngineResources() {
+    scene = Scene(&device);
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);

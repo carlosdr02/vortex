@@ -6,6 +6,8 @@
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
 inline PFN_vkGetRayTracingShaderGroupHandlesKHR vkGetRayTracingShaderGroupHandles;
+inline PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizes;
+inline PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructure;
 
 VkInstance createInstance();
 
