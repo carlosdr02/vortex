@@ -62,7 +62,7 @@ static void renderSettingsWindow() {
     End();
 }
 
-static void renderContentBrowserWindow(GLFWwindow* window, Project& project) {
+static void renderContentBrowserWindow(GLFWwindow* window, Project& project, Scene& scene) {
     Begin("Content browser", &contentBrowserWindow);
 
     if (BeginPopupContextWindow()) {
@@ -81,7 +81,7 @@ static void renderContentBrowserWindow(GLFWwindow* window, Project& project) {
             selected = i;
 
             if (IsMouseDoubleClicked(0)) {
-                // TODO:
+                scene.add(files[i]);
             }
         }
     }
@@ -89,14 +89,14 @@ static void renderContentBrowserWindow(GLFWwindow* window, Project& project) {
     End();
 }
 
-void renderGui(GLFWwindow* window, Project& project) {
+void renderGui(GLFWwindow* window, Project& project, Scene& scene) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     NewFrame();
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
-    if (contentBrowserWindow) renderContentBrowserWindow(window, project);
+    if (contentBrowserWindow) renderContentBrowserWindow(window, project, scene);
 
     Render();
 }

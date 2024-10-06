@@ -2,6 +2,7 @@
 
 #include <graphics.h>
 #include "project.h"
+#include "scene.h"
 
 class Application {
 public:
@@ -13,6 +14,7 @@ public:
 private:
     GLFWwindow* window;
     Project project;
+    Scene scene;
     VkInstance instance;
     VkSurfaceKHR surface;
     Device device;
