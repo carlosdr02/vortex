@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string>
+#include <filesystem>
 
 #include <vulkan/vulkan.h>
 #include <graphics.h>
@@ -10,7 +10,7 @@ public:
     Scene() = default;
     Scene(Device* device);
 
-    void add(const std::string& file);
+    void add(const std::filesystem::path& path);
 
 private:
     Device* device;
