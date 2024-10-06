@@ -6,6 +6,38 @@
 #include <tiny_gltf.h>
 
 Scene::Scene(Device* device) : device(device) {
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = device->renderQueue.familyIndex
+    };
+
+    vkCreateCommandPool(device->logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    vkAllocateCommandBuffers(device->logical, &commandBufferAllocateInfo, &commandBuffer);
+}
+
+void Scene::destroy(VkDevice device) {
+    vkDestroyAccelerationStructure(device, tlas, nullptr);
+    vkDestroyAccelerationStructure(device, blas, nullptr);
+
+    tlasBuffer.destroy(device);
+    instanceBuffer.destroy(device);
+    blasBuffer.destroy(device);
+    transformBuffer.destroy(device);
+    indexBuffer.destroy(device);
+    vertexBuffer.destroy(device);
+
+    vkDestroyCommandPool(device, commandPool, nullptr);
 }
 
 static void extractMeshData(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
@@ -147,12 +179,12 @@ void Scene::add(const std::filesystem::path& path) {
         .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
         .pNext         = nullptr,
         .type          = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-        .flags         = 0,
+        .flags         = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
         .geometryCount = 1,
         .pGeometries   = &accelerationStructureGeometry
     };
 
-    const uint32_t maxPrimitiveCount = indices.size() / 3;
+    uint32_t maxPrimitiveCount = indices.size() / 3;
 
     VkAccelerationStructureBuildSizesInfoKHR accelerationStructureBuildSizesInfo = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
     vkGetAccelerationStructureBuildSizes(device->logical, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &maxPrimitiveCount, &accelerationStructureBuildSizesInfo);
@@ -172,4 +204,136 @@ void Scene::add(const std::filesystem::path& path) {
     };
 
     vkCreateAccelerationStructure(device->logical, &accelerationStructureCreateInfo, nullptr, &blas);
+
+    Buffer scratchBuffer(*device, accelerationStructureBuildSizesInfo.buildScratchSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    accelerationStructureBuildGeometryInfo.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    accelerationStructureBuildGeometryInfo.dstAccelerationStructure = blas;
+    accelerationStructureBuildGeometryInfo.scratchData              = { scratchBuffer.getDeviceAddress(device->logical) };
+
+    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfo = {
+        .primitiveCount  = maxPrimitiveCount,
+        .primitiveOffset = 0,
+        .firstVertex     = 0,
+        .transformOffset = 0
+    };
+
+    VkAccelerationStructureBuildRangeInfoKHR* accelerationStructureBuildRangeInfos[] = { &accelerationStructureBuildRangeInfo };
+
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+    vkCmdBuildAccelerationStructures(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    VkCommandBufferSubmitInfo commandBufferSubmitInfo = {
+        .sType         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .pNext         = nullptr,
+        .commandBuffer = commandBuffer,
+        .deviceMask    = 0
+    };
+
+    VkSubmitInfo2 submitInfo = {
+        .sType                    = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .pNext                    = nullptr,
+        .flags                    = 0,
+        .waitSemaphoreInfoCount   = 0,
+        .pWaitSemaphoreInfos      = nullptr,
+        .commandBufferInfoCount   = 1,
+        .pCommandBufferInfos      = &commandBufferSubmitInfo,
+        .signalSemaphoreInfoCount = 0,
+        .pSignalSemaphoreInfos    = nullptr
+    };
+
+    vkQueueSubmit2(device->renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(device->renderQueue);
+
+    scratchBuffer.destroy(device->logical);
+
+    VkAccelerationStructureDeviceAddressInfoKHR accelerationStructureDeviceAddressInfo = {
+        .sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+        .pNext                 = nullptr,
+        .accelerationStructure = blas
+    };
+
+    blasDeviceAddress = vkGetAccelerationStructureDeviceAddress(device->logical, &accelerationStructureDeviceAddressInfo);
+
+    VkAccelerationStructureInstanceKHR accelerationStructureInstance = {
+        .transform                              = transform,
+        .instanceCustomIndex                    = 0,
+        .mask                                   = 0xFF,
+        .instanceShaderBindingTableRecordOffset = 0,
+        .flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
+        .accelerationStructureReference         = blasDeviceAddress
+    };
+
+    const VkDeviceSize instanceBufferSize = sizeof(accelerationStructureInstance);
+    instanceBuffer = Buffer(*device, instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    {
+        void* data;
+        vkMapMemory(device->logical, instanceBuffer.memory, 0, instanceBufferSize, 0, &data);
+        memcpy(data, &accelerationStructureInstance, instanceBufferSize);
+        vkUnmapMemory(device->logical, instanceBuffer.memory);
+    }
+
+    const VkDeviceAddress instanceBufferDeviceAddress = instanceBuffer.getDeviceAddress(device->logical);
+
+    VkAccelerationStructureGeometryInstancesDataKHR accelerationStructureGeometryInstancesData = {
+        .sType           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
+        .pNext           = nullptr,
+        .arrayOfPointers = VK_FALSE,
+        .data            = { instanceBufferDeviceAddress }
+    };
+
+    accelerationStructureGeometry.geometryType       = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    accelerationStructureGeometry.geometry.instances = accelerationStructureGeometryInstancesData;
+
+    accelerationStructureBuildGeometryInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
+    maxPrimitiveCount = 1;
+
+    vkGetAccelerationStructureBuildSizes(device->logical, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelerationStructureBuildGeometryInfo, &maxPrimitiveCount, &accelerationStructureBuildSizesInfo);
+
+    const VkDeviceSize tlasBufferSize = accelerationStructureBuildSizesInfo.accelerationStructureSize;
+    tlasBuffer = Buffer(*device, tlasBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    accelerationStructureCreateInfo.buffer = tlasBuffer;
+    accelerationStructureCreateInfo.size   = tlasBufferSize;
+    accelerationStructureCreateInfo.type   = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+
+    vkCreateAccelerationStructure(device->logical, &accelerationStructureCreateInfo, nullptr, &tlas);
+
+    scratchBuffer = Buffer(*device, accelerationStructureBuildSizesInfo.buildScratchSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    accelerationStructureBuildGeometryInfo.dstAccelerationStructure = tlas;
+    accelerationStructureBuildGeometryInfo.scratchData              = { scratchBuffer.getDeviceAddress(device->logical) };
+
+    accelerationStructureBuildRangeInfo.primitiveCount = maxPrimitiveCount;
+
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+    vkCmdBuildAccelerationStructures(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    vkQueueSubmit2(device->renderQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(device->renderQueue);
+
+    scratchBuffer.destroy(device->logical);
+
+    accelerationStructureDeviceAddressInfo.accelerationStructure = tlas;
+
+    tlasDeviceAddress = vkGetAccelerationStructureDeviceAddress(device->logical, &accelerationStructureDeviceAddressInfo);
 }

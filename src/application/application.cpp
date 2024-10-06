@@ -20,6 +20,7 @@ Application::~Application() {
     renderer.waitIdle(device.logical);
     renderer.destroy(device.logical);
     shaderBindingTable.destroy(device.logical);
+    scene.destroy(device.logical);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -74,11 +75,11 @@ void Application::createWindow() {
 }
 
 void Application::createEngineResources() {
-    scene = Scene(&device);
     instance = createInstance();
     glfwCreateWindowSurface(instance, window, nullptr, &surface);
     device = Device(instance, surface);
     loadFunctionPointers(device.logical);
+    scene = Scene(&device);
     surfaceFormat = device.getSurfaceFormat(surface);
     renderPass = createRenderPass(device.logical, surfaceFormat.format, false);
     guiDescriptorPool = createGuiDescriptorPool(device.logical);
