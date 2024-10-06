@@ -1,7 +1,5 @@
 #include "project.h"
 
-#include <filesystem>
-
 static const char* tempProject = "temp_project";
 
 Project::Project() {
@@ -9,19 +7,17 @@ Project::Project() {
 
     for (const auto& entry : std::filesystem::directory_iterator(tempProject)) {
         if (entry.is_regular_file()) {
-            files.push_back(entry.path().filename().string());
+            files.push_back(entry.path());
         }
     }
 }
 
-void Project::import(const std::string& file) {
-    std::filesystem::path source(file);
-
+void Project::import(const std::filesystem::path& path) {
     try {
-        std::filesystem::copy(source, tempProject);
+        std::filesystem::copy(path, tempProject);
     } catch (const std::filesystem::filesystem_error& e) {
         // TODO:
     }
 
-    files.push_back(source.filename().string());
+    files.push_back(path);
 }

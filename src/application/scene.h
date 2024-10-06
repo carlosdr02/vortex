@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string>
+#include <filesystem>
 
 class Scene {
 public:
-    void add(const std::string& file);
+    void add(const std::filesystem::path& path);
 };

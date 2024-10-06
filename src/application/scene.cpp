@@ -49,15 +49,13 @@ static void extractMeshData(const tinygltf::Model& model, const tinygltf::Primit
     }
 }
 
-void Scene::add(const std::string& file) {
-    std::string path = "temp_project/" + file;
-
+void Scene::add(const std::filesystem::path& path) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, path);
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
 
     if (!warn.empty()) {
         printf("Warn: %s\n", warn.c_str());

@@ -77,7 +77,7 @@ static void renderContentBrowserWindow(GLFWwindow* window, Project& project, Sce
     const auto& files = project.files;
     static int selected = -1;
     for (size_t i = 0; i < files.size(); ++i) {
-        if (Selectable(files[i].c_str(), selected == i, ImGuiSelectableFlags_AllowDoubleClick)) {
+        if (Selectable(files[i].filename().string().c_str(), selected == i, ImGuiSelectableFlags_AllowDoubleClick)) {
             selected = i;
 
             if (IsMouseDoubleClicked(0)) {
