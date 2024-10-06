@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <vector>
 #include <filesystem>
 
@@ -10,5 +9,5 @@ public:
 
     Project();
 
-    void import(const std::string& file);
+    void import(const std::filesystem::path& path);
 };
