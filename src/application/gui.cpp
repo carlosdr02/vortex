@@ -89,10 +89,24 @@ static void renderCreateNewProjectModal() {
     ImGuiIO& io = ImGui::GetIO();
     SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (BeginPopupModal("Create new project", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
+        static char name[128] = "";
+        static char location[256] = "";
+
         if (Button("<")) {
             openOrCreateProjectModal = true;
             CloseCurrentPopup();
             createNewProjectModal = false;
+            strcpy(name, "");
+            strcpy(location, "");
+        }
+
+        InputText("Name", name, sizeof(name));
+        InputText("Location", location, sizeof(location));
+
+        SameLine();
+
+        if (Button("...")) {
+
         }
 
         EndPopup();
