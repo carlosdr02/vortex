@@ -7,6 +7,8 @@ using namespace ImGui;
 
 static bool settingsWindow = false;
 static bool contentBrowserWindow = true;
+static bool openOrCreateProjectModal = true;
+static bool createNewProjectModal = false;
 
 static void renderMainMenuBar() {
     if (BeginMainMenuBar()) {
@@ -65,6 +67,38 @@ static void renderContentBrowserWindow() {
     End();
 }
 
+static void renderOpenOrCreateProjectModal() {
+    OpenPopup("Open or create a project");
+
+    ImGuiIO& io = ImGui::GetIO();
+    SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (BeginPopupModal("Open or create a project", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (Button("Create a new project")) {
+            createNewProjectModal = true;
+            CloseCurrentPopup();
+            openOrCreateProjectModal = false;
+        }
+
+        EndPopup();
+    }
+}
+
+static void renderCreateNewProjectModal() {
+    OpenPopup("Create new project");
+
+    ImGuiIO& io = ImGui::GetIO();
+    SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    if (BeginPopupModal("Create new project", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (Button("<")) {
+            openOrCreateProjectModal = true;
+            CloseCurrentPopup();
+            createNewProjectModal = false;
+        }
+
+        EndPopup();
+    }
+}
+
 void renderGui() {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -73,6 +107,8 @@ void renderGui() {
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
     if (contentBrowserWindow) renderContentBrowserWindow();
+    if (openOrCreateProjectModal) renderOpenOrCreateProjectModal();
+    if (createNewProjectModal) renderCreateNewProjectModal();
 
     Render();
 }
