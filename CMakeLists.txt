@@ -1,24 +1,24 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
+cmake_minimum_required(VERSION 3.7)
 
-ADD_COMPILE_DEFINITIONS(SOURCE_DIR_PATH="${CMAKE_SOURCE_DIR}")
+add_compile_definitions(SOURCE_DIR_PATH="${CMAKE_SOURCE_DIR}")
 
-SET(CMAKE_CXX_STANDARD 20)
-SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-PROJECT(Vortex VERSION 1.0.0)
+project(Vortex VERSION 1.0.0)
 
 # Vulkan
-FIND_PACKAGE(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED)
 
 # GLFW
-SET(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-SET(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-SET(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-ADD_SUBDIRECTORY(dependencies/glfw)
+add_subdirectory(dependencies/glfw)
 
 # Dear ImGui
-ADD_LIBRARY(imgui
+add_library(imgui
     dependencies/imgui/imgui.cpp
     dependencies/imgui/imgui_demo.cpp
     dependencies/imgui/imgui_draw.cpp
@@ -28,35 +28,35 @@ ADD_LIBRARY(imgui
     dependencies/imgui/backends/imgui_impl_glfw.cpp
 )
 
-TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC dependencies/imgui)
-TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC dependencies/imgui/backends)
+target_include_directories(imgui PUBLIC dependencies/imgui)
+target_include_directories(imgui PUBLIC dependencies/imgui/backends)
 
-TARGET_INCLUDE_DIRECTORIES(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
-TARGET_LINK_LIBRARIES(imgui ${Vulkan_LIBRARIES})
+target_include_directories(imgui PUBLIC ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(imgui ${Vulkan_LIBRARIES})
 
-TARGET_LINK_LIBRARIES(imgui glfw)
+target_link_libraries(imgui glfw)
 
 # Engine
-ADD_LIBRARY(engine
+add_library(engine
     src/engine/graphics.cpp
 )
 
-TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
+target_include_directories(engine PUBLIC src/engine)
 
-TARGET_LINK_LIBRARIES(engine imgui)
+target_link_libraries(engine imgui)
 
 # Application
-ADD_LIBRARY(application
+add_library(application
     src/application/platform/windows/file_dialog.cpp
     src/application/application.cpp
     src/application/gui.cpp
 )
 
-TARGET_INCLUDE_DIRECTORIES(application PUBLIC src/application)
+target_include_directories(application PUBLIC src/application)
 
-TARGET_LINK_LIBRARIES(application engine)
+target_link_libraries(application engine)
 
 # Executable
-ADD_EXECUTABLE(vortex src/main.cpp)
+add_executable(vortex src/main.cpp)
 
-TARGET_LINK_LIBRARIES(vortex application)
+target_link_libraries(vortex application)
