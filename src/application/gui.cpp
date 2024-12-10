@@ -90,7 +90,7 @@ static void renderCreateNewProjectModal() {
     SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (BeginPopupModal("Create new project", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
         static char name[128] = "";
-        InputText("Name", name, sizeof(name));
+        InputText("Name", name, sizeof(name), ImGuiInputTextFlags_CharsNoBlank);
 
         static char location[256] = "";
         InputText("Location", location, sizeof(location));
@@ -101,13 +101,17 @@ static void renderCreateNewProjectModal() {
 
         }
 
-        float button_width = 75.0f;
-        float button_spacing = GetStyle().ItemSpacing.x;
-        float total_width = 2 * button_width + button_spacing;
+        PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+        Text("");
+        PopStyleColor();
 
-        SetCursorPos(ImVec2(GetContentRegionMax().x - total_width, GetCursorPosY() + 25.0f));
+        float buttonWidth = 75.0f;
+        float buttonSpacing = GetStyle().ItemSpacing.x;
+        float totalWidth = 2 * buttonWidth + buttonSpacing;
 
-        if (Button("Cancel", ImVec2(button_width, 0))) {
+        SetCursorPos(ImVec2(GetContentRegionMax().x - totalWidth, GetCursorPosY() + 25.0f));
+
+        if (Button("Cancel", ImVec2(buttonWidth, 0))) {
             openOrCreateProjectModal = true;
             CloseCurrentPopup();
             createNewProjectModal = false;
@@ -117,7 +121,7 @@ static void renderCreateNewProjectModal() {
 
         SameLine();
 
-        if (Button("Create", ImVec2(button_width, 0))) {
+        if (Button("Create", ImVec2(buttonWidth, 0))) {
 
         }
 
