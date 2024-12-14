@@ -1,9 +1,12 @@
 #pragma once
 
 #include <graphics.h>
+#include "project.h"
 
 class Application {
 public:
+    Project project;
+
     Application();
     ~Application();
 

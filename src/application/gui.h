@@ -1,3 +1,5 @@
 #pragma once
 
-void renderGui();
+#include "application.h"
+
+void renderGui(Application& app);

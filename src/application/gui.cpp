@@ -83,7 +83,7 @@ static void renderOpenOrCreateProjectModal() {
     }
 }
 
-static void renderCreateNewProjectModal() {
+static void renderCreateNewProjectModal(Application& app) {
     OpenPopup("Create new project");
 
     ImGuiIO& io = GetIO();
@@ -122,14 +122,15 @@ static void renderCreateNewProjectModal() {
         SameLine();
 
         if (Button("Create", ImVec2(buttonWidth, 0))) {
-
+            std::filesystem::path path = std::filesystem::path(location) / name;
+            app.project = Project(path);
         }
 
         EndPopup();
     }
 }
 
-void renderGui() {
+void renderGui(Application& app) {
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     NewFrame();
@@ -138,7 +139,7 @@ void renderGui() {
     if (settingsWindow) renderSettingsWindow();
     if (contentBrowserWindow) renderContentBrowserWindow();
     if (openOrCreateProjectModal) renderOpenOrCreateProjectModal();
-    if (createNewProjectModal) renderCreateNewProjectModal();
+    if (createNewProjectModal) renderCreateNewProjectModal(app);
 
     Render();
 }
