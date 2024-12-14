@@ -62,8 +62,22 @@ static void renderSettingsWindow() {
     End();
 }
 
-static void renderContentBrowserWindow() {
+static void renderContentTree(const std::filesystem::path& path) {
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        if (entry.is_directory()) {
+            if (TreeNode(entry.path().filename().c_str())) {
+                renderContentTree(entry.path());
+                TreePop();
+            }
+        } else if (entry.is_regular_file()) {
+            Text("%s", entry.path().filename().c_str());
+        }
+    }
+}
+
+static void renderContentBrowserWindow(Project& project) {
     Begin("Content browser", &contentBrowserWindow);
+    renderContentTree(project.getContentPath());
     End();
 }
 
@@ -139,7 +153,7 @@ void renderGui(Application& app) {
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
-    if (contentBrowserWindow) renderContentBrowserWindow();
+    if (contentBrowserWindow) renderContentBrowserWindow(app.project);
     if (openOrCreateProjectModal) renderOpenOrCreateProjectModal();
     if (createNewProjectModal) renderCreateNewProjectModal(app);
 
