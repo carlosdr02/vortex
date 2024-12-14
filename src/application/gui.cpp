@@ -62,15 +62,27 @@ static void renderSettingsWindow() {
     End();
 }
 
+static bool hasSubdirectories(const std::filesystem::path& path) {
+    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+        if (entry.is_directory()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static void renderContentTree(const std::filesystem::path& path) {
     for (const auto& entry : std::filesystem::directory_iterator(path)) {
         if (entry.is_directory()) {
-            if (TreeNode(entry.path().filename().c_str())) {
-                renderContentTree(entry.path());
-                TreePop();
+            if (hasSubdirectories(entry.path())) {
+                if (TreeNode(entry.path().filename().c_str())) {
+                    renderContentTree(entry.path());
+                    TreePop();
+                }
+            } else {
+                Text("%s", entry.path().filename().c_str());
             }
-        } else if (entry.is_regular_file()) {
-            Text("%s", entry.path().filename().c_str());
         }
     }
 }
@@ -104,7 +116,7 @@ static void renderCreateNewProjectModal(Application& app) {
     SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     if (BeginPopupModal("Create new project", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize)) {
         static char name[128] = "";
-        InputText("Name", name, sizeof(name), ImGuiInputTextFlags_CharsNoBlank);
+        InputText("Name", name, sizeof(name));
 
         static char location[256] = "";
         InputText("Location", location, sizeof(location));
@@ -116,7 +128,7 @@ static void renderCreateNewProjectModal(Application& app) {
         }
 
         PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-        Text("");
+        Text(""); // TODO: Error: Invalid path.
         PopStyleColor();
 
         float buttonWidth = 75.0f;
