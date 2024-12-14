@@ -8,4 +8,6 @@ public:
 
     Project() = default;
     Project(const std::filesystem::path& path);
+
+    std::filesystem::path getContentPath();
 };

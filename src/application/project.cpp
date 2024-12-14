@@ -4,6 +4,10 @@
 
 Project::Project(const std::filesystem::path& path) : path(path) {
     std::filesystem::create_directory(path);
-    std::filesystem::create_directory(path / "content");
     std::ofstream projectFile(path / "project.vx");
+    std::filesystem::create_directory(getContentPath());
+}
+
+std::filesystem::path Project::getContentPath() {
+    return path / "content";
 }

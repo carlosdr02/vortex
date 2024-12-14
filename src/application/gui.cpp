@@ -124,6 +124,8 @@ static void renderCreateNewProjectModal(Application& app) {
         if (Button("Create", ImVec2(buttonWidth, 0))) {
             std::filesystem::path path = std::filesystem::path(location) / name;
             app.project = Project(path);
+            CloseCurrentPopup();
+            createNewProjectModal = false;
         }
 
         EndPopup();
