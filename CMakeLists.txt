@@ -47,7 +47,6 @@ target_link_libraries(engine imgui)
 
 # Application
 add_library(application
-    src/application/platform/windows/file_dialog.cpp
     src/application/project.cpp
     src/application/application.cpp
     src/application/gui.cpp
