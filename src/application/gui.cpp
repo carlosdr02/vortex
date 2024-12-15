@@ -89,7 +89,17 @@ static void renderContentTree(const std::filesystem::path& path) {
 
 static void renderContentBrowserWindow(Project& project) {
     Begin("Content browser", &contentBrowserWindow);
-    renderContentTree(project.getContentPath());
+
+    if (BeginTable("content_browser_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
+        TableNextColumn();
+        renderContentTree(project.getContentPath());
+
+        TableNextColumn();
+        // TODO:
+
+        EndTable();
+    }
+
     End();
 }
 
