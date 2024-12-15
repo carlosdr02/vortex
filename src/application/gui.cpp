@@ -9,6 +9,7 @@ static bool settingsWindow = false;
 static bool contentBrowserWindow = true;
 static bool openOrCreateProjectModal = true;
 static bool createNewProjectModal = false;
+static std::filesystem::path selectedPath;
 
 static void renderMainMenuBar() {
     if (BeginMainMenuBar()) {
@@ -75,13 +76,28 @@ static bool hasSubdirectories(const std::filesystem::path& path) {
 static void renderContentTree(const std::filesystem::path& path) {
     for (const auto& entry : std::filesystem::directory_iterator(path)) {
         if (entry.is_directory()) {
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (entry.path() == selectedPath) {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+
             if (hasSubdirectories(entry.path())) {
-                if (TreeNode(entry.path().filename().c_str())) {
+                flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+                bool nodeClicked = TreeNodeEx(entry.path().filename().c_str(), flags);
+                if (IsItemClicked() && !IsItemToggledOpen()) {
+                    selectedPath = entry.path();
+                }
+
+                if (nodeClicked) {
                     renderContentTree(entry.path());
                     TreePop();
                 }
             } else {
-                Text("%s", entry.path().filename().c_str());
+                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                TreeNodeEx(entry.path().filename().c_str(), flags);
+                if (IsItemClicked() && !IsItemToggledOpen()) {
+                    selectedPath = entry.path();
+                }
             }
         }
     }
