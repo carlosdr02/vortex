@@ -106,7 +106,7 @@ static void renderContentTree(const std::filesystem::path& path) {
 static void renderContentFiles() {
     float itemWidth = 75.0f;
     float spacing = GetStyle().ItemSpacing.x;
-    PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spacing, spacing));
+    PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5f, 0.5f));
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float currentX = 0.0f;
 
@@ -116,7 +116,13 @@ static void renderContentFiles() {
             currentX = 0.0f;
         }
 
-        Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth));
+        if (Selectable(entry.path().filename().c_str(), false, ImGuiSelectableFlags_AllowDoubleClick, ImVec2(itemWidth, itemWidth))) {
+            if (IsMouseDoubleClicked(0)) {
+                selectedPath = entry.path();
+                // TODO: Consider if we need to return here
+            }
+        }
+
         currentX += itemWidth + spacing;
         SameLine();
     }
