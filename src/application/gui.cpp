@@ -103,6 +103,27 @@ static void renderContentTree(const std::filesystem::path& path) {
     }
 }
 
+static void renderContentFiles() {
+    float itemWidth = 75.0f;
+    float spacing = GetStyle().ItemSpacing.x;
+    PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spacing, spacing));
+    float availableWidth = ImGui::GetContentRegionAvail().x;
+    float currentX = 0.0f;
+
+    for (const auto& entry : std::filesystem::directory_iterator(selectedPath)) {
+        if (currentX + itemWidth > availableWidth) {
+            NewLine();
+            currentX = 0.0f;
+        }
+
+        Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth));
+        currentX += itemWidth + spacing;
+        SameLine();
+    }
+
+    PopStyleVar();
+}
+
 static void renderContentBrowserWindow(Project& project) {
     Begin("Content browser", &contentBrowserWindow);
 
@@ -111,7 +132,9 @@ static void renderContentBrowserWindow(Project& project) {
         renderContentTree(project.getContentPath());
 
         TableNextColumn();
-        // TODO:
+        if (selectedPath != "") {
+            renderContentFiles();
+        }
 
         EndTable();
     }
