@@ -104,13 +104,14 @@ static void renderContentTree(const std::filesystem::path& path) {
 }
 
 static void renderContentFiles() {
+    static std::filesystem::path selectedFile;
+
     float itemWidth = 75.0f;
     float spacing = GetStyle().ItemSpacing.x;
     float availableWidth = ImGui::GetContentRegionAvail().x;
     float currentX = 0.0f;
 
     PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(spacing, spacing));
-    PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
 
     for (const auto& entry : std::filesystem::directory_iterator(selectedPath)) {
         if (currentX + itemWidth > availableWidth) {
@@ -118,17 +119,24 @@ static void renderContentFiles() {
             currentX = 0.0f;
         }
 
-        Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth));
+        if (entry.path() != selectedFile) {
+            PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        }
+
+        if (Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth))) {
+            selectedFile = entry.path();
+        }
+
+        PopStyleColor();
+
         if (IsItemHovered() && IsMouseDoubleClicked(0)) {
             selectedPath = entry.path();
-            // TODO: Consider if we should return here.
         }
 
         currentX += itemWidth + spacing;
         SameLine();
     }
 
-    PopStyleColor();
     PopStyleVar();
 }
 
