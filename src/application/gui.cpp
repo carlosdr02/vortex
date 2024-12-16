@@ -6,7 +6,7 @@
 using namespace ImGui;
 
 static bool settingsWindow = false;
-static bool contentBrowserWindow = true;
+static bool projectPanel = true;
 static bool openOrCreateProjectModal = true;
 static bool createNewProjectModal = false;
 static std::filesystem::path selectedPath;
@@ -32,7 +32,7 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Window")) {
-            MenuItem("Content browser", NULL, &contentBrowserWindow);
+            MenuItem("Project panel", NULL, &projectPanel);
 
             EndMenu();
         }
@@ -73,7 +73,7 @@ static bool hasSubdirectories(const std::filesystem::path& path) {
     return false;
 }
 
-static void renderContentTree(const std::filesystem::path& path) {
+static void renderProjectTree(const std::filesystem::path& path) {
     for (const auto& entry : std::filesystem::directory_iterator(path)) {
         if (entry.is_directory()) {
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
@@ -89,7 +89,7 @@ static void renderContentTree(const std::filesystem::path& path) {
                 }
 
                 if (nodeClicked) {
-                    renderContentTree(entry.path());
+                    renderProjectTree(entry.path());
                     TreePop();
                 }
             } else {
@@ -103,7 +103,7 @@ static void renderContentTree(const std::filesystem::path& path) {
     }
 }
 
-static void renderContentFiles() {
+static void renderProjectFiles() {
     static std::filesystem::path selectedFile;
 
     float itemWidth = 75.0f;
@@ -140,16 +140,16 @@ static void renderContentFiles() {
     PopStyleVar();
 }
 
-static void renderContentBrowserWindow(Project& project) {
-    Begin("Content browser", &contentBrowserWindow);
+static void renderProjectPanel(Project& project) {
+    Begin("Project", &projectPanel);
 
-    if (BeginTable("content_browser_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
+    if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
         TableNextColumn();
-        renderContentTree(project.getContentPath());
+        renderProjectTree(project.getContentPath());
 
         TableNextColumn();
         if (selectedPath != "") {
-            renderContentFiles();
+            renderProjectFiles();
         }
 
         EndTable();
@@ -230,7 +230,7 @@ void renderGui(Application& app) {
 
     renderMainMenuBar();
     if (settingsWindow) renderSettingsWindow();
-    if (contentBrowserWindow) renderContentBrowserWindow(app.project);
+    if (projectPanel) renderProjectPanel(app.project);
     if (openOrCreateProjectModal) renderOpenOrCreateProjectModal();
     if (createNewProjectModal) renderCreateNewProjectModal(app);
 
