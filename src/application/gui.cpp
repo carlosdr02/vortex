@@ -110,6 +110,8 @@ static void renderProjectTree(const std::filesystem::path& path) {
 }
 
 static void renderProjectFiles() {
+    static std::filesystem::path selectedFile;
+
     float itemWidth = 75.0f;
     float spacing = GetStyle().ItemSpacing.x;
     float availableWidth = ImGui::GetContentRegionAvail().x;
@@ -123,7 +125,15 @@ static void renderProjectFiles() {
             currentX = 0.0f;
         }
 
-        Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth));
+        if (entry.path() != selectedFile) {
+            PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+        }
+
+        if (Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth))) {
+            selectedFile = entry.path();
+        }
+
+        PopStyleColor();
 
         if (IsItemHovered() && IsMouseDoubleClicked(0) && entry.is_directory()) {
             selectedPath = entry.path();
