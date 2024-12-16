@@ -74,32 +74,38 @@ static bool hasSubdirectories(const std::filesystem::path& path) {
 }
 
 static void renderProjectTree(const std::filesystem::path& path) {
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
-        if (entry.is_directory()) {
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (entry.path() == selectedPath) {
-                flags |= ImGuiTreeNodeFlags_Selected;
-            }
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+    ImGuiTreeNodeFlags nodeFlags = flags | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+    ImGuiTreeNodeFlags leafFlags = flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 
-            if (hasSubdirectories(entry.path())) {
-                flags |= ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-                bool nodeClicked = TreeNodeEx(entry.path().filename().c_str(), flags);
-                if (IsItemClicked() && !IsItemToggledOpen()) {
-                    selectedPath = entry.path();
-                }
+    if (path == selectedPath) {
+        nodeFlags |= ImGuiTreeNodeFlags_Selected;
+    }
 
-                if (nodeClicked) {
+    bool nodeClicked = TreeNodeEx(path.filename().c_str(), nodeFlags);
+    if (IsItemClicked() && !IsItemToggledOpen()) {
+        selectedPath = path;
+    }
+
+    if (nodeClicked) {
+        for (const auto& entry : std::filesystem::directory_iterator(path)) {
+            if (entry.is_directory()) {
+                if (hasSubdirectories(entry.path())) {
                     renderProjectTree(entry.path());
-                    TreePop();
-                }
-            } else {
-                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                TreeNodeEx(entry.path().filename().c_str(), flags);
-                if (IsItemClicked() && !IsItemToggledOpen()) {
-                    selectedPath = entry.path();
+                } else {
+                    if (entry.path() == selectedPath) {
+                        leafFlags |= ImGuiTreeNodeFlags_Selected;
+                    }
+
+                    TreeNodeEx(entry.path().filename().c_str(), leafFlags);
+                    if (IsItemClicked() && !IsItemToggledOpen()) {
+                        selectedPath = entry.path();
+                    }
                 }
             }
         }
+
+        TreePop();
     }
 }
 
