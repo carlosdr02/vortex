@@ -150,6 +150,13 @@ static void renderProjectPanel(Project& project) {
     Begin("Project", &projectPanel);
 
     if (selectedPath != "") {
+        bool buttonDisabled = selectedPath == project.getAssetsDirectoryPath();
+        BeginDisabled(buttonDisabled);
+        if (Button("^")) {
+            selectedPath = selectedPath.parent_path();
+        }
+        EndDisabled();
+
         if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
             TableNextColumn();
             renderProjectTree(project.getAssetsDirectoryPath());
