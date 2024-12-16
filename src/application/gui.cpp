@@ -157,6 +157,12 @@ static void renderProjectPanel(Project& project) {
         }
         EndDisabled();
 
+        SameLine();
+
+        if (Button("H")) {
+            selectedPath = project.getAssetsDirectoryPath();
+        }
+
         if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
             TableNextColumn();
             renderProjectTree(project.getAssetsDirectoryPath());
