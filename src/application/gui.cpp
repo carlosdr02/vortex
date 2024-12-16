@@ -104,8 +104,6 @@ static void renderProjectTree(const std::filesystem::path& path) {
 }
 
 static void renderProjectFiles() {
-    static std::filesystem::path selectedFile;
-
     float itemWidth = 75.0f;
     float spacing = GetStyle().ItemSpacing.x;
     float availableWidth = ImGui::GetContentRegionAvail().x;
@@ -119,17 +117,9 @@ static void renderProjectFiles() {
             currentX = 0.0f;
         }
 
-        if (entry.path() != selectedFile) {
-            PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
-        }
+        Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth));
 
-        if (Button(entry.path().filename().c_str(), ImVec2(itemWidth, itemWidth))) {
-            selectedFile = entry.path();
-        }
-
-        PopStyleColor();
-
-        if (IsItemHovered() && IsMouseDoubleClicked(0)) {
+        if (IsItemHovered() && IsMouseDoubleClicked(0) && entry.is_directory()) {
             selectedPath = entry.path();
         }
 
@@ -143,16 +133,16 @@ static void renderProjectFiles() {
 static void renderProjectPanel(Project& project) {
     Begin("Project", &projectPanel);
 
-    if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
-        TableNextColumn();
-        renderProjectTree(project.getContentPath());
+    if (selectedPath != "") {
+        if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
+            TableNextColumn();
+            renderProjectTree(project.getAssetsDirectoryPath());
 
-        TableNextColumn();
-        if (selectedPath != "") {
+            TableNextColumn();
             renderProjectFiles();
-        }
 
-        EndTable();
+            EndTable();
+        }
     }
 
     End();
@@ -217,6 +207,7 @@ static void renderCreateNewProjectModal(Application& app) {
             app.project = Project(path);
             CloseCurrentPopup();
             createNewProjectModal = false;
+            selectedPath = app.project.getAssetsDirectoryPath();
         }
 
         EndPopup();
