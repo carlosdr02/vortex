@@ -1,5 +1,7 @@
 #include "gui.h"
 
+#include <stack>
+
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
 
@@ -10,6 +12,14 @@ static bool projectPanel = true;
 static bool openOrCreateProjectModal = true;
 static bool createNewProjectModal = false;
 static std::filesystem::path selectedPath;
+static std::stack<std::filesystem::path> lastVisitedPaths;
+
+static void selectPath(const std::filesystem::path& path) {
+    if (selectedPath != path) {
+        lastVisitedPaths.push(selectedPath);
+        selectedPath = path;
+    }
+}
 
 static void renderMainMenuBar() {
     if (BeginMainMenuBar()) {
@@ -18,7 +28,7 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Edit")) {
-            MenuItem("Settings", NULL, &settingsWindow);
+            MenuItem("Settings", nullptr, &settingsWindow);
 
             EndMenu();
         }
@@ -32,7 +42,7 @@ static void renderMainMenuBar() {
         }
 
         if (BeginMenu("Window")) {
-            MenuItem("Project panel", NULL, &projectPanel);
+            MenuItem("Project panel", nullptr, &projectPanel);
 
             EndMenu();
         }
@@ -84,7 +94,7 @@ static void renderProjectTree(const std::filesystem::path& path) {
 
     bool nodeClicked = TreeNodeEx(path.filename().c_str(), nodeFlags);
     if (IsItemClicked() && !IsItemToggledOpen()) {
-        selectedPath = path;
+        selectPath(path);
     }
 
     if (nodeClicked) {
@@ -99,7 +109,7 @@ static void renderProjectTree(const std::filesystem::path& path) {
 
                     TreeNodeEx(entry.path().filename().c_str(), leafFlags);
                     if (IsItemClicked() && !IsItemToggledOpen()) {
-                        selectedPath = entry.path();
+                        selectPath(entry.path());
                     }
                 }
             }
@@ -136,7 +146,7 @@ static void renderProjectFiles() {
         PopStyleColor();
 
         if (IsItemHovered() && IsMouseDoubleClicked(0) && entry.is_directory()) {
-            selectedPath = entry.path();
+            selectPath(entry.path());
         }
 
         currentX += itemWidth + spacing;
@@ -150,17 +160,32 @@ static void renderProjectPanel(Project& project) {
     Begin("Project", &projectPanel);
 
     if (selectedPath != "") {
+        BeginDisabled(lastVisitedPaths.empty());
+        if (Button("<")) {
+            selectedPath = lastVisitedPaths.top();
+            lastVisitedPaths.pop();
+        }
+        EndDisabled();
+
+        SameLine();
+
+        if (Button(">")) {
+
+        }
+
+        SameLine();
+
         bool buttonDisabled = selectedPath == project.getAssetsDirectoryPath();
         BeginDisabled(buttonDisabled);
         if (Button("^")) {
-            selectedPath = selectedPath.parent_path();
+            selectPath(selectedPath.parent_path());
         }
         EndDisabled();
 
         SameLine();
 
         if (Button("H")) {
-            selectedPath = project.getAssetsDirectoryPath();
+            selectPath(project.getAssetsDirectoryPath());
         }
 
         if (BeginTable("project_panel_table", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV, GetContentRegionAvail())) {
