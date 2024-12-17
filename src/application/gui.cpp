@@ -13,11 +13,13 @@ static bool openOrCreateProjectModal = true;
 static bool createNewProjectModal = false;
 static std::filesystem::path selectedPath;
 static std::stack<std::filesystem::path> lastVisitedPaths;
+static std::stack<std::filesystem::path> cosa;
 
 static void selectPath(const std::filesystem::path& path) {
     if (selectedPath != path) {
         lastVisitedPaths.push(selectedPath);
         selectedPath = path;
+        cosa = std::stack<std::filesystem::path>();
     }
 }
 
@@ -162,6 +164,7 @@ static void renderProjectPanel(Project& project) {
     if (selectedPath != "") {
         BeginDisabled(lastVisitedPaths.empty());
         if (Button("<")) {
+            cosa.push(selectedPath);
             selectedPath = lastVisitedPaths.top();
             lastVisitedPaths.pop();
         }
@@ -169,9 +172,13 @@ static void renderProjectPanel(Project& project) {
 
         SameLine();
 
+        BeginDisabled(cosa.empty());
         if (Button(">")) {
-
+            lastVisitedPaths.push(selectedPath);
+            selectedPath = cosa.top();
+            cosa.pop();
         }
+        EndDisabled();
 
         SameLine();
 
